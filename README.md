@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/ESP32-IoT-E7352C?logo=espressif&logoColor=white" alt="ESP32" />
   <img src="https://img.shields.io/badge/MQTT-Protocol-660066?logo=eclipse-mosquitto&logoColor=white" alt="MQTT" />
 </p>
-
+g drive link(video) : https://drive.google.com/drive/folders/1fnQv-KcLB0_vIOnMqLL7_UBjO5rMEBYF?usp=drive_link
 ---
 
 ## Overview
