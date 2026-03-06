@@ -10,10 +10,12 @@
   <img src="https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=white" alt="React" />
   <img src="https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" alt="Python" />
-  <img src="https://img.shields.io/badge/YOLOv8-Ultralytics-FF6F00" alt="YOLOv8" />
+  <img src="https://img.shields.io/badge/YOLO26-Ultralytics-FF6F00" alt="YOLOv8" />
   <img src="https://img.shields.io/badge/ESP32-IoT-E7352C?logo=espressif&logoColor=white" alt="ESP32" />
   <img src="https://img.shields.io/badge/MQTT-Protocol-660066?logo=eclipse-mosquitto&logoColor=white" alt="MQTT" />
 </p>
+
+Google drive link (for live update with video preview) -- https://drive.google.com/drive/folders/1fnQv-KcLB0_vIOnMqLL7_UBjO5rMEBYF?usp=sharing
 
 ---
 
