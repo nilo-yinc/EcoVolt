@@ -6,7 +6,7 @@ person_model = YOLO("yoloe-26l-seg.pt")  ## Using YoloE for better person detect
 person_model.set_classes(["person"])
 hardware_model = YOLO("fan_light_model.pt") ## Custom trained model for fans and lights detection
 
-def detect_objects(frame):
+def detect_objects(frame, run_hardware=True):
     person_count = 0
     fan_count = 0
     light_count = 0
@@ -30,20 +30,20 @@ def detect_objects(frame):
                     })
 
     ## Detecting Fans and Lights
-    hardware_results = hardware_model(frame, imgsz=640, verbose=False)
-    for r in hardware_results:
-        if r.boxes is not None:
-            for box in r.boxes:
-                conf = float(box.conf[0])
-                
-                if conf > 0.4: 
-                    cls_name = hardware_model.names[int(box.cls[0])].lower()
-                    x1, y1, x2, y2 = box.xyxy[0].tolist()
+    if run_hardware:
+        hardware_results = hardware_model(frame, imgsz=640, verbose=False)
+        for r in hardware_results:
+            if r.boxes is not None:
+                for box in r.boxes:
+                    conf = float(box.conf[0])
                     
-                    if "fan" in cls_name:
-                        fan_count += 1
+                    if conf > 0.4: 
+                        cls_name = hardware_model.names[int(box.cls[0])].lower()
                         
-                    elif "light" in cls_name:
-                        light_count += 1
+                        if "fan" in cls_name:
+                            fan_count += 1
+                            
+                        elif "light" in cls_name:
+                            light_count += 1
 
     return person_count, fan_count, light_count, detections
