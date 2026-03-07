@@ -1,8 +1,8 @@
 import { Bell, WifiOff, Search, Activity, Shield } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useWebSocketStatus } from '../context/WebSocketContext';
-import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const PAGE_TITLES = {
     '/dashboard': { label: 'Dashboard', sub: 'Real-time campus overview' },
@@ -21,12 +21,24 @@ const PAGE_TITLES = {
     '/settings': { label: 'Settings', sub: 'System configuration' },
 };
 
+function resolveCvApiUrl() {
+    const configured = (import.meta.env.VITE_CV_API_URL || '').trim();
+    return configured || 'http://127.0.0.1:8000';
+}
+
 export default function Navbar() {
-    const { alerts } = useApp();
+    const { alerts, rooms, devices } = useApp();
     const { connected } = useWebSocketStatus();
     const [showAlerts, setShowAlerts] = useState(false);
     const [time, setTime] = useState(new Date());
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [espIpInput, setEspIpInput] = useState('');
+    const [espIpLocked, setEspIpLocked] = useState(false);
+    const [espSaveMsg, setEspSaveMsg] = useState('');
+    const [espBusy, setEspBusy] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
 
     useEffect(() => {
         const t = setInterval(() => setTime(new Date()), 1000);
@@ -36,6 +48,115 @@ export default function Navbar() {
     const page = PAGE_TITLES[location.pathname] ?? { label: 'EcoVolt', sub: '' };
     const unreadCount = alerts.filter(a => a.severity === 'high').length;
     const timeStr = time.toLocaleTimeString('en-US', { hour12: false });
+    const showEspConfig = true;
+    const cvApiBase = resolveCvApiUrl().replace(/\/+$/, '');
+    const searchTargets = useMemo(() => {
+        const pageTargets = Object.entries(PAGE_TITLES).map(([path, meta]) => ({
+            path,
+            label: meta.label,
+            type: 'Page',
+            text: `${meta.label} ${meta.sub}`.toLowerCase(),
+        }));
+        const roomTargets = (rooms || []).map((room) => ({
+            path: `/rooms/${room.id}`,
+            label: room.name || room.id,
+            type: 'Room',
+            text: `${room.name || ''} ${room.location || ''} ${room.id || ''}`.toLowerCase(),
+        }));
+        const deviceTargets = (devices || []).map((d) => ({
+            path: '/devices',
+            label: d.name || d.type || 'Device',
+            type: 'Device',
+            text: `${d.name || ''} ${d.type || ''} ${d.room_id || ''}`.toLowerCase(),
+        }));
+        const aliases = [
+            { path: '/dashboard', label: 'Dashboard', type: 'Page', text: 'home overview main' },
+            { path: '/ghost-view', label: 'Ghost View', type: 'Page', text: 'ghost camera cctv privacy feed' },
+            { path: '/manual-control', label: 'Manual Control', type: 'Page', text: 'manual esp iot control led fan' },
+            { path: '/rooms', label: 'Rooms', type: 'Page', text: 'room classroom lab' },
+            { path: '/devices', label: 'Devices', type: 'Page', text: 'device appliance fan light projector monitor' },
+            { path: '/energy-analytics', label: 'Energy Analytics', type: 'Page', text: 'energy graph trend usage' },
+            { path: '/energy-alerts', label: 'Energy Alerts', type: 'Page', text: 'alerts warning threat' },
+            { path: '/settings', label: 'Settings', type: 'Page', text: 'config configure setup' },
+        ];
+        return [...pageTargets, ...roomTargets, ...deviceTargets, ...aliases];
+    }, [rooms, devices]);
+
+    const suggestions = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return [];
+        return searchTargets
+            .filter((t) => t.text.includes(q))
+            .slice(0, 6);
+    }, [searchQuery, searchTargets]);
+
+    const runSearch = (forcedTarget = null) => {
+        const target = forcedTarget || suggestions[0] || null;
+        if (target?.path) {
+            navigate(target.path);
+            setSearchQuery('');
+            setSearchOpen(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!showEspConfig) return;
+        let mounted = true;
+        (async () => {
+            try {
+                const res = await fetch(`${cvApiBase}/config/esp32-ip`, { cache: 'no-store' });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!mounted) return;
+                const savedIp = (data?.ip_address || '').trim();
+                setEspIpInput(savedIp);
+                setEspIpLocked(!!savedIp);
+            } catch {
+                // no-op
+            }
+        })();
+        return () => { mounted = false; };
+    }, [showEspConfig, cvApiBase]);
+
+    const saveEspIp = async () => {
+        const ip = espIpInput.trim();
+        setEspBusy(true);
+        setEspSaveMsg('');
+        try {
+            const res = await fetch(`${cvApiBase}/config/esp32-ip`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip_address: ip }),
+            });
+            if (!res.ok) throw new Error('save failed');
+            localStorage.setItem('esp32_ip', ip);
+            setEspIpLocked(!!ip);
+            setEspSaveMsg('ESP IP saved');
+        } catch {
+            setEspSaveMsg('Failed to save ESP IP');
+        } finally {
+            setEspBusy(false);
+            setTimeout(() => setEspSaveMsg(''), 2500);
+        }
+    };
+
+    const resetEspIp = async () => {
+        setEspBusy(true);
+        setEspSaveMsg('');
+        try {
+            const res = await fetch(`${cvApiBase}/config/esp32-ip`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('reset failed');
+            localStorage.removeItem('esp32_ip');
+            setEspIpInput('');
+            setEspIpLocked(false);
+            setEspSaveMsg('ESP IP reset');
+        } catch {
+            setEspSaveMsg('Failed to reset ESP IP');
+        } finally {
+            setEspBusy(false);
+            setTimeout(() => setEspSaveMsg(''), 2500);
+        }
+    };
 
     return (
         <header
@@ -70,7 +191,7 @@ export default function Navbar() {
             </div>
 
             {/* ── Center: search ────────────────────────────────── */}
-            <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', width: '280px' }} className="hidden lg:block">
+            <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', width: showEspConfig ? '560px' : '360px' }} className="hidden lg:flex lg:items-center lg:gap-2">
                 <div style={{ position: 'relative' }}>
                     <Search
                         size={13}
@@ -79,10 +200,147 @@ export default function Navbar() {
                     <input
                         type="text"
                         placeholder="Search rooms, devices..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setSearchOpen(true);
+                        }}
+                        onFocus={() => setSearchOpen(true)}
+                        onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') runSearch();
+                        }}
                         className="form-input"
-                        style={{ paddingLeft: '2rem', fontSize: '0.8125rem', height: '34px', paddingTop: 0, paddingBottom: 0 }}
+                        style={{ paddingLeft: '2rem', fontSize: '0.8125rem', height: '34px', paddingTop: 0, paddingBottom: 0, width: '240px' }}
                     />
+                    {searchOpen && suggestions.length > 0 && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '38px',
+                                left: 0,
+                                width: '240px',
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '10px',
+                                boxShadow: 'var(--shadow-xl)',
+                                zIndex: 60,
+                                overflow: 'hidden',
+                            }}
+                        >
+                            {suggestions.map((s, idx) => (
+                                <button
+                                    key={`${s.path}-${idx}`}
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        runSearch(s);
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        textAlign: 'left',
+                                        padding: '0.5rem 0.625rem',
+                                        border: 'none',
+                                        borderBottom: idx === suggestions.length - 1 ? 'none' : '1px solid var(--border)',
+                                        background: 'transparent',
+                                        color: 'var(--text-2)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                        fontFamily: 'JetBrains Mono',
+                                    }}
+                                >
+                                    <span style={{ color: 'var(--text-1)' }}>{s.label}</span>
+                                    <span style={{ color: 'var(--text-4)', marginLeft: '6px' }}>· {s.type}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
+                {showEspConfig && (
+                    <>
+                        <input
+                            type="text"
+                            value={espIpInput}
+                            onChange={(e) => setEspIpInput(e.target.value)}
+                            placeholder={espIpLocked ? '' : 'ESP32 IP (e.g. 10.175.12.15)'}
+                            className="form-input"
+                            readOnly={espIpLocked}
+                            style={{
+                                fontSize: '0.75rem',
+                                height: '34px',
+                                paddingTop: 0,
+                                paddingBottom: 0,
+                                width: '170px',
+                                cursor: espIpLocked ? 'not-allowed' : 'text',
+                                opacity: espIpLocked ? 0.9 : 1,
+                            }}
+                        />
+                        <button
+                            type="button"
+                            onClick={saveEspIp}
+                            disabled={espBusy || espIpLocked || !espIpInput.trim()}
+                            style={{
+                                height: '34px',
+                                padding: '0 10px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border)',
+                                background: 'var(--surface-2)',
+                                color: 'var(--text-2)',
+                                fontSize: '0.6875rem',
+                                fontFamily: 'JetBrains Mono',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            SAVE
+                        </button>
+                        <button
+                            type="button"
+                            onClick={resetEspIp}
+                            disabled={espBusy}
+                            style={{
+                                height: '34px',
+                                padding: '0 10px',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(248,113,113,0.35)',
+                                background: 'rgba(248,113,113,0.08)',
+                                color: 'var(--red)',
+                                fontSize: '0.6875rem',
+                                fontFamily: 'JetBrains Mono',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            RESET
+                        </button>
+                        {espIpLocked && (
+                            <>
+                                <span
+                                    className="hidden xl:inline"
+                                    style={{
+                                        fontSize: '0.6875rem',
+                                        color: 'var(--text-3)',
+                                        fontFamily: 'JetBrains Mono',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                    title={`ESP IP Address: ${espIpInput}`}
+                                >
+                                    ESP IP: {espIpInput}
+                                </span>
+                                <span
+                                    className="inline xl:hidden"
+                                    style={{
+                                        fontSize: '0.6875rem',
+                                        color: 'var(--text-3)',
+                                        fontFamily: 'JetBrains Mono',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                    title={`ESP IP Address: ${espIpInput}`}
+                                >
+                                    IP SAVED
+                                </span>
+                            </>
+                        )}
+                    </>
+                )}
             </div>
 
             {/* ── Right: status indicators ──────────────────────── */}
@@ -242,6 +500,21 @@ export default function Navbar() {
                         </div>
                     )}
                 </div>
+                {showEspConfig && espSaveMsg && (
+                    <div
+                        style={{
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface-2)',
+                            color: 'var(--text-2)',
+                            fontSize: '0.6875rem',
+                            fontFamily: 'JetBrains Mono',
+                        }}
+                    >
+                        {espSaveMsg}
+                    </div>
+                )}
             </div>
         </header>
     );

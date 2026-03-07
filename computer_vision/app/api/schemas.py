@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class StatusResponse(BaseModel):
     people: int
@@ -14,3 +14,7 @@ class MetricsResponse(BaseModel):
     recall: float
     f1_score: float
     false_trigger_rate: float
+
+
+class Esp32IpConfig(BaseModel):
+    ip_address: str = Field(default="", description="ESP32 IPv4 address on local network")

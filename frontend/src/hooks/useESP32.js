@@ -1,46 +1,102 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-const ESP_ENABLED = (import.meta.env.VITE_ENABLE_ESP32 || 'false') === 'true';
+const ESP_ENABLED = (import.meta.env.VITE_ENABLE_ESP32 || 'true') === 'true';
 const ESP_IP = (import.meta.env.VITE_ESP32_IP || '').trim();
-const BASE_URL = `http://${ESP_IP}`;
-const POLL_INTERVAL_MS = 5000;
+const LOCAL_STORAGE_KEY = 'esp32_ip';
+const POLL_INTERVAL_MS = 3000;
+const REQUEST_TIMEOUT_MS = 4500;
+const MAX_CONSECUTIVE_FAILURES = 3;
+
+function resolveCvApiUrl() {
+  const configured = (import.meta.env.VITE_CV_API_URL || '').trim();
+  return configured || 'http://127.0.0.1:8000';
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Hook to communicate with the ESP32 IoT controller.
  * Polls /status every 5 s and exposes control functions for LED & Fan.
  */
 export function useESP32(enabled = true) {
+  const [espIp, setEspIp] = useState(() => {
+    const fromStorage = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return (fromStorage || ESP_IP || '').trim();
+  });
   const [ledState, setLedState] = useState(false);
   const [fanState, setFanState] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('checking'); // 'checking' | 'connected' | 'disconnected'
   const [isLoading, setIsLoading] = useState(false);
   const [lastMessage, setLastMessage] = useState('');
   const intervalRef = useRef(null);
+  const pollBusyRef = useRef(false);
+  const failCountRef = useRef(0);
+  const cvApiBase = resolveCvApiUrl().replace(/\/+$/, '');
+  const baseUrl = espIp ? `http://${espIp}` : '';
+
+  const syncIpFromBackend = useCallback(async () => {
+    const fromStorage = (localStorage.getItem(LOCAL_STORAGE_KEY) || '').trim();
+    if (fromStorage) {
+      // Browser value is primary and should persist until reset/history clear.
+      return;
+    }
+    try {
+      const res = await fetchWithTimeout(`${cvApiBase}/config/esp32-ip`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const ip = (data?.ip_address || '').trim();
+      if (ip) {
+        localStorage.setItem(LOCAL_STORAGE_KEY, ip);
+        setEspIp(ip);
+      }
+    } catch {
+      // fallback: keep local value
+    }
+  }, [cvApiBase]);
 
   const fetchStatus = useCallback(async () => {
-    if (!enabled || !ESP_ENABLED || !ESP_IP) return;
+    if (!enabled || !ESP_ENABLED || !baseUrl) {
+      setConnectionStatus('disconnected');
+      return;
+    }
+    if (pollBusyRef.current) return;
+    pollBusyRef.current = true;
     try {
-      const res = await fetch(`${BASE_URL}/status`);
+      const res = await fetchWithTimeout(`${baseUrl}/status`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setLedState(data.ledState);
       setFanState(data.fanState);
+      failCountRef.current = 0;
       setConnectionStatus('connected');
     } catch {
-      setConnectionStatus('disconnected');
+      failCountRef.current += 1;
+      if (failCountRef.current >= MAX_CONSECUTIVE_FAILURES) {
+        setConnectionStatus('disconnected');
+      }
+    } finally {
+      pollBusyRef.current = false;
     }
-  }, [enabled]);
+  }, [enabled, baseUrl]);
 
   // Control LED
   const controlLED = useCallback(async (action) => {
-    if (!ESP_ENABLED || !ESP_IP) {
-      setLastMessage('ESP32 disabled in deployment');
+    if (!ESP_ENABLED || !baseUrl) {
+      setLastMessage('ESP32 IP not configured');
       return;
     }
     setIsLoading(true);
     setLastMessage('');
     try {
-      const res = await fetch(`${BASE_URL}/led/${action}`);
+      const res = await fetchWithTimeout(`${baseUrl}/led/${action}`, {}, 2000);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
       setLastMessage(text);
@@ -53,18 +109,18 @@ export function useESP32(enabled = true) {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchStatus]);
+  }, [fetchStatus, baseUrl]);
 
   // Control Fan
   const controlFan = useCallback(async (action) => {
-    if (!ESP_ENABLED || !ESP_IP) {
-      setLastMessage('ESP32 disabled in deployment');
+    if (!ESP_ENABLED || !baseUrl) {
+      setLastMessage('ESP32 IP not configured');
       return;
     }
     setIsLoading(true);
     setLastMessage('');
     try {
-      const res = await fetch(`${BASE_URL}/fan/${action}`);
+      const res = await fetchWithTimeout(`${baseUrl}/fan/${action}`, {}, 2000);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
       setLastMessage(text);
@@ -77,18 +133,21 @@ export function useESP32(enabled = true) {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchStatus]);
+  }, [fetchStatus, baseUrl]);
 
   // Polling
   useEffect(() => {
-    if (!enabled || !ESP_ENABLED || !ESP_IP) {
+    syncIpFromBackend();
+    if (!enabled || !ESP_ENABLED || !baseUrl) {
       setConnectionStatus('disconnected');
       return;
     }
+    failCountRef.current = 0;
+    setConnectionStatus('checking');
     fetchStatus();
     intervalRef.current = setInterval(fetchStatus, POLL_INTERVAL_MS);
     return () => clearInterval(intervalRef.current);
-  }, [enabled, fetchStatus]);
+  }, [enabled, fetchStatus, baseUrl, syncIpFromBackend]);
 
   return {
     ledState,
@@ -99,6 +158,6 @@ export function useESP32(enabled = true) {
     controlLED,
     controlFan,
     refreshStatus: fetchStatus,
-    espIp: ESP_IP || 'not-configured',
+    espIp: espIp || 'not-configured',
   };
 }
