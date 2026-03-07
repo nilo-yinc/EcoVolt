@@ -89,7 +89,7 @@ def run_vision_loop():
         cv2.putText(display_frame, "EcoVolt", (frame.shape[1]-140, 30), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1, cv2.LINE_AA)
 
-        cv2.imshow("Watt-Watch | YOLO26 Core", display_frame)
+        cv2.imshow("YOLO26 Core", display_frame)
 
         if cv2.waitKey(1) == 27: # ESC to exit
             break
