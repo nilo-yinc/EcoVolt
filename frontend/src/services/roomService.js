@@ -1,20 +1,9 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import api from './api';
 
-const roomService = {
-    async getRooms() {
-        const res = await fetch(`${API}/rooms`);
-        if (!res.ok) throw new Error('Failed to fetch rooms');
-        return res.json();
-    },
-    async updateConfig(roomId, config) {
-        const res = await fetch(`${API}/rooms/${roomId}/config`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config),
-        });
-        if (!res.ok) throw new Error('Failed to update config');
-        return res.json();
-    },
+export const roomService = {
+    getRooms: () => api.get('/api/rooms').then(r => r.data),
+    getRoom: (id) => api.get(`/api/rooms/${id}`).then(r => r.data),
+    updateConfig: (id, config) => api.put(`/api/rooms/${id}/config`, config).then(r => r.data),
 };
 
 export default roomService;

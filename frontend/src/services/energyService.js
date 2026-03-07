@@ -1,11 +1,9 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import api from './api';
 
-const energyService = {
-    async getLogs() {
-        const res = await fetch(`${API}/energy/logs`);
-        if (!res.ok) throw new Error('Failed to fetch energy logs');
-        return res.json();
-    },
+export const energyService = {
+    getLogs: () => api.get('/api/energy/logs').then(r => r.data),
+    getStats: () => api.get('/api/energy/stats').then(r => r.data),
+    getSavings: () => api.get('/api/energy/savings').then(r => r.data),
 };
 
 export default energyService;
