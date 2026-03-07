@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -40,6 +41,7 @@ const staggerContainer = {
 
 export default function HomeGateway() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const { scrollY } = useScroll();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -61,6 +63,10 @@ export default function HomeGateway() {
       const y = el.getBoundingClientRect().top + window.scrollY - 80;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
+  };
+
+  const openPlatform = () => {
+    navigate(isAuthenticated ? '/dashboard' : '/auth');
   };
 
   return (
@@ -134,7 +140,7 @@ export default function HomeGateway() {
 
                 <motion.div variants={fadeIn} className="flex justify-center w-full">
                   <button
-                    onClick={() => navigate('/dashboard')}
+                    onClick={openPlatform}
                     className="flex justify-center flex-row items-center gap-3 rounded-2xl bg-gradient-to-b from-cyan-400 to-cyan-600 hover:to-cyan-500 text-slate-950 py-4 sm:py-5 text-lg sm:text-xl font-bold transition-all hover:scale-105 active:scale-95 shadow-[0_0_50px_rgba(34,211,238,0.35)] w-full max-w-[320px] sm:max-w-[420px]"
                   >
                     Open Platform <ArrowRight size={24} />
@@ -302,7 +308,7 @@ export default function HomeGateway() {
                 <span className="text-4xl font-extrabold text-white">$0</span>
                 <span className="text-slate-500"> /mo forever</span>
               </div>
-              <button onClick={() => navigate('/dashboard')} className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 font-semibold hover:bg-white/5 transition-colors">Start Free</button>
+              <button onClick={openPlatform} className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 font-semibold hover:bg-white/5 transition-colors">Start Free</button>
               <ul className="space-y-4 text-sm text-slate-300">
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-slate-500 shrink-0" /> 1 Campus Location</li>
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-slate-500 shrink-0" /> Basic Dashboard & Alerts</li>
@@ -357,7 +363,7 @@ export default function HomeGateway() {
               <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Stop leaking energy. Start optimizing today.</h2>
               <p className="text-lg text-slate-400 mb-10">Join hundreds of facilities managers who trust EcoVolt to secure their infrastructure and hit sustainability targets.</p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
-                <button onClick={() => navigate('/dashboard')} className="rounded-xl bg-white text-slate-950 px-8 py-4 font-bold text-lg hover:bg-slate-100 transition-colors shadow-xl">Deploy Free Setup</button>
+                <button onClick={openPlatform} className="rounded-xl bg-white text-slate-950 px-8 py-4 font-bold text-lg hover:bg-slate-100 transition-colors shadow-xl">Deploy Free Setup</button>
               </div>
             </div>
           </div>

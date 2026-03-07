@@ -2,13 +2,15 @@
 import base64
 import os
 import re
+import secrets
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 
-from app.api.schemas import Esp32IpConfig
+from app.api.schemas import DummyLoginRequest, DummyLoginResponse, DummyUserProfile, Esp32IpConfig
 from app.api.state import latest_ghost_frame, latest_state
 
 app = FastAPI(title="Watt-Watch Brain API", version="1.0")
@@ -20,9 +22,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.on_event("startup")
+def seed_dummy_auth_user():
+    users_col, _ = _get_auth_collections()
+    if users_col is not None:
+        _ensure_demo_user(users_col)
+
 _mongo_client: Optional[MongoClient] = None
 _esp_collection = None
+_auth_users_collection = None
+_auth_sessions_collection = None
 _IPV4_RE = re.compile(r"^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$")
+
+
+def _demo_auth_config():
+    return {
+        "email": os.getenv("DUMMY_AUTH_EMAIL", "admin@ecovolt.demo").strip().lower(),
+        "password": os.getenv("DUMMY_AUTH_PASSWORD", "EcoVolt@123").strip(),
+        "role": os.getenv("DUMMY_AUTH_ROLE", "admin").strip() or "admin",
+        "display_name": os.getenv("DUMMY_AUTH_NAME", "EcoVolt Admin").strip() or "EcoVolt Admin",
+    }
 
 
 def _get_esp_collection():
@@ -35,12 +55,57 @@ def _get_esp_collection():
         return None
 
     try:
-        _mongo_client = MongoClient(mongo_url, serverSelectionTimeoutMS=3000)
+        if _mongo_client is None:
+            _mongo_client = MongoClient(mongo_url, serverSelectionTimeoutMS=3000)
         db_name = os.getenv("MONGODB_DB", "ecovolt")
         _esp_collection = _mongo_client[db_name]["settings"]
         return _esp_collection
     except Exception:
         return None
+
+
+def _get_auth_collections():
+    global _mongo_client, _auth_users_collection, _auth_sessions_collection
+    if _auth_users_collection is not None and _auth_sessions_collection is not None:
+        return _auth_users_collection, _auth_sessions_collection
+
+    mongo_url = os.getenv("MONGODB_URL", "").strip()
+    if not mongo_url:
+        return None, None
+
+    try:
+        if _mongo_client is None:
+            _mongo_client = MongoClient(mongo_url, serverSelectionTimeoutMS=3000)
+        db_name = os.getenv("MONGODB_DB", "ecovolt")
+        db = _mongo_client[db_name]
+        _auth_users_collection = db["auth_users"]
+        _auth_sessions_collection = db["auth_sessions"]
+        return _auth_users_collection, _auth_sessions_collection
+    except Exception:
+        return None, None
+
+
+def _ensure_demo_user(users_col):
+    if users_col is None:
+        return None
+    demo = _demo_auth_config()
+    now = datetime.now(timezone.utc)
+    users_col.update_one(
+        {"email": demo["email"]},
+        {
+            "$set": {
+                "email": demo["email"],
+                "password": demo["password"],
+                "role": demo["role"],
+                "display_name": demo["display_name"],
+                "is_demo": True,
+                "updated_at": now,
+            },
+            "$setOnInsert": {"created_at": now},
+        },
+        upsert=True,
+    )
+    return users_col.find_one({"email": demo["email"]})
 
 
 def _read_esp_ip() -> str:
@@ -142,3 +207,42 @@ def reset_esp32_ip():
     if not ok:
         return Response(status_code=503, content="MongoDB unavailable")
     return {"ip_address": "", "saved": True}
+
+
+@app.post("/auth/login", response_model=DummyLoginResponse)
+@app.post("/api/auth/login", response_model=DummyLoginResponse)
+def auth_login(payload: DummyLoginRequest):
+    email = payload.email.strip().lower()
+    token = secrets.token_urlsafe(32)
+    users_col, sessions_col = _get_auth_collections()
+    now = datetime.now(timezone.utc)
+    demo = _demo_auth_config()
+
+    if users_col is not None:
+        _ensure_demo_user(users_col)
+        user_doc = users_col.find_one({"email": email})
+        if not user_doc or str(user_doc.get("password", "")) != payload.password:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        role = str(user_doc.get("role", demo["role"]))
+        display_name = str(user_doc.get("display_name", demo["display_name"]))
+    else:
+        if email != demo["email"] or payload.password != demo["password"]:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        role = demo["role"]
+        display_name = demo["display_name"]
+
+    if users_col is not None and sessions_col is not None:
+        sessions_col.insert_one(
+            {
+                "email": email,
+                "token": token,
+                "created_at": now,
+                "source": "frontend_dummy_auth",
+            }
+        )
+
+    return DummyLoginResponse(
+        ok=True,
+        token=token,
+        user=DummyUserProfile(email=email, role=role, display_name=display_name),
+    )

@@ -18,3 +18,20 @@ class MetricsResponse(BaseModel):
 
 class Esp32IpConfig(BaseModel):
     ip_address: str = Field(default="", description="ESP32 IPv4 address on local network")
+
+
+class DummyLoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class DummyUserProfile(BaseModel):
+    email: str
+    role: str = "admin"
+    display_name: str = "EcoVolt Admin"
+
+
+class DummyLoginResponse(BaseModel):
+    ok: bool = True
+    token: str
+    user: DummyUserProfile

@@ -1,42 +1,37 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { authService } from '../services/authService';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-    // Basic dummy auth state
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Check localStorage on mount for persistent dummy session
     useEffect(() => {
-        const storedAuth = localStorage.getItem('ecovolt_auth');
-        if (storedAuth === 'true') {
+        const storedToken = localStorage.getItem('ecovolt_auth_token');
+        const storedUser = localStorage.getItem('ecovolt_user');
+        if (storedToken && storedUser) {
             setIsAuthenticated(true);
-            const storedUser = localStorage.getItem('ecovolt_user');
-            if (storedUser) {
+            try {
                 setUser(JSON.parse(storedUser));
+            } catch {
+                setUser(null);
             }
         }
         setIsLoading(false);
     }, []);
 
-    const login = async (username, password) => {
-        // Dummy authentication logic
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                if (username === 'admin' && password === 'admin') {
-                    const adminUser = { role: 'admin', name: 'System Admin' };
-                    setIsAuthenticated(true);
-                    setUser(adminUser);
-                    localStorage.setItem('ecovolt_auth', 'true');
-                    localStorage.setItem('ecovolt_user', JSON.stringify(adminUser));
-                    resolve(true);
-                } else {
-                    reject(new Error('Invalid username or password'));
-                }
-            }, 800); // Simulate network delay
-        });
+    const login = async (email, password) => {
+        const data = await authService.login(email, password);
+        const nextUser = data?.user || { role: 'admin', display_name: 'EcoVolt Admin', email };
+        const token = data?.token || 'dummy-session-token';
+        setIsAuthenticated(true);
+        setUser(nextUser);
+        localStorage.setItem('ecovolt_auth', 'true');
+        localStorage.setItem('ecovolt_auth_token', token);
+        localStorage.setItem('ecovolt_user', JSON.stringify(nextUser));
+        return true;
     };
 
     const loginAsGuest = () => {
@@ -56,6 +51,7 @@ export function AuthProvider({ children }) {
         setIsAuthenticated(false);
         setUser(null);
         localStorage.removeItem('ecovolt_auth');
+        localStorage.removeItem('ecovolt_auth_token');
         localStorage.removeItem('ecovolt_user');
     };
 

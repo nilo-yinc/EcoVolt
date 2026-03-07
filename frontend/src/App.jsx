@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import CCTVBackground from './components/CCTVBackground';
@@ -20,8 +21,19 @@ import AuditLogs from './pages/AuditLogs';
 import RuleConfiguration from './pages/RuleConfiguration';
 import PrivacyCompliance from './pages/PrivacyCompliance';
 import Settings from './pages/Settings';
+import LandingPage from './pages/LandingPage';
 
 function ProtectedLayout() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="h-screen w-screen bg-[#060b14]" />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
       <CCTVBackground />
@@ -55,9 +67,12 @@ function ProtectedLayout() {
 }
 
 export default function App() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Routes>
       <Route path="/" element={<HomeGateway />} />
+      <Route path="/auth" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
       <Route path="/*" element={<ProtectedLayout />} />
     </Routes>
   );
