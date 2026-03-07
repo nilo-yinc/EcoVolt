@@ -2,6 +2,9 @@ import api from './api';
 
 function isFastApiOnlyMode() {
     const apiUrl = (import.meta.env.VITE_API_URL || '').trim().toLowerCase();
+    const cvUrl = (import.meta.env.VITE_CV_API_URL || '').trim().toLowerCase();
+    if (!apiUrl) return true;
+    if (cvUrl && apiUrl === cvUrl) return true;
     return apiUrl.includes('localhost:8000') || apiUrl.includes('127.0.0.1:8000');
 }
 
