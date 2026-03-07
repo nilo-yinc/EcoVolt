@@ -175,6 +175,14 @@ export default function GhostView() {
         }
     }, [dataOnlyMode]);
 
+    const toggleViewMode = useCallback(() => {
+        setDataOnlyMode((prev) => {
+            const next = !prev;
+            setGhostMode(!next);
+            return next;
+        });
+    }, []);
+
     useEffect(() => {
         requestCamera();
         return () => {
@@ -319,7 +327,7 @@ export default function GhostView() {
                 </div>
 
                 <div className="hud-card p-4 mb-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <div className="hud-label mb-2">SELECT FEED</div>
                             <select
@@ -335,26 +343,20 @@ export default function GhostView() {
                             </select>
                         </div>
                         <div className="flex items-end">
-                            <label className="flex items-center gap-2 px-3 py-2 border border-[var(--ww-border)] rounded-md cursor-pointer hover:border-purple-500/20 transition-colors w-full">
-                                <input
-                                    type="checkbox"
-                                    checked={ghostMode}
-                                    onChange={(e) => setGhostMode(e.target.checked)}
-                                    className="w-3.5 h-3.5 accent-purple-400"
-                                />
-                                <span className="text-xs font-mono text-[var(--ww-text-2)]">GHOST MODE</span>
-                            </label>
-                        </div>
-                        <div className="flex items-end">
-                            <label className="flex items-center gap-2 px-3 py-2 border border-[var(--ww-border)] rounded-md cursor-pointer hover:border-cyan-500/20 transition-colors w-full">
-                                <input
-                                    type="checkbox"
-                                    checked={dataOnlyMode}
-                                    onChange={(e) => setDataOnlyMode(e.target.checked)}
-                                    className="w-3.5 h-3.5 accent-cyan-400"
-                                />
-                                <span className="text-xs font-mono text-[var(--ww-text-2)]">DATA ONLY</span>
-                            </label>
+                            <button
+                                type="button"
+                                onClick={toggleViewMode}
+                                className={`flex items-center justify-between gap-3 px-3 py-2 border rounded-md transition-colors w-full ${
+                                    dataOnlyMode
+                                        ? 'border-cyan-500/30 text-cyan-300 bg-cyan-500/10'
+                                        : 'border-purple-500/30 text-purple-300 bg-purple-500/10'
+                                }`}
+                            >
+                                <span className="text-xs font-mono tracking-wider">VIEW MODE</span>
+                                <span className="text-xs font-mono font-bold">
+                                    {dataOnlyMode ? 'DATA ONLY' : 'GHOST MODE'}
+                                </span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -378,41 +380,10 @@ export default function GhostView() {
                                 </div>
 
                                 {dataOnlyMode ? (
-                                    <div className="p-6 md:p-8" style={{ minHeight: '500px' }}>
-                                        <div className="text-center mb-6">
-                                            <div className="text-[var(--ww-text-muted)] text-4xl font-mono mb-2">[X]</div>
+                                    <div className="flex items-center justify-center p-12" style={{ minHeight: '500px' }}>
+                                        <div className="text-center">
+                                            <div className="text-[var(--ww-text-muted)] text-5xl font-mono mb-4">[X]</div>
                                             <p className="text-sm font-mono text-[var(--ww-text-3)]">VISUAL FEED DISABLED (DATA ONLY MODE)</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="bg-white/[0.02] rounded-md p-4">
-                                                <div className="hud-label mb-3">DETECTION METRICS</div>
-                                                {detectionData.map((item, i) => (
-                                                    <div key={i} className="flex justify-between items-center py-2 border-b border-white/[0.03] last:border-0">
-                                                        <span className="text-sm font-mono text-[var(--ww-text-3)]">{item.label}</span>
-                                                        <span className={`text-sm font-mono font-bold ${item.on ? 'text-amber-400' : 'text-[var(--ww-text-muted)]'}`}>
-                                                            {item.value}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="bg-white/[0.02] rounded-md p-4">
-                                                <div className="hud-label mb-3">SYSTEM STATUS</div>
-                                                {[
-                                                    { label: 'People Count', val: peopleDetected, accent: 'text-cyan-400' },
-                                                    { label: 'Room', val: activeRoom.name },
-                                                    { label: 'Monitoring', val: activeRoom.monitoring || 'CCTV' },
-                                                    { label: 'Brightness', val: ghostMeta.brightness !== undefined ? `${ghostMeta.brightness}` : 'N/A' },
-                                                    { label: 'Latency', val: ghostMeta.latency_ms !== undefined ? `${(ghostMeta.latency_ms / 1000).toFixed(2)}s` : 'N/A' },
-                                                    { label: 'Power Draw', val: `${totalPower}W`, accent: totalPower > 0 ? 'text-amber-400' : '' },
-                                                    { label: 'Status', val: statusText, accent: statusClass },
-                                                    { label: 'Backend', val: backendOnline ? 'ONLINE' : 'OFFLINE', accent: backendOnline ? 'text-emerald-400' : 'text-red-400' },
-                                                ].map((stat, index) => (
-                                                    <div key={index} className="flex justify-between items-center py-2 border-b border-white/[0.03] last:border-0">
-                                                        <span className="text-sm font-mono text-[var(--ww-text-muted)]">{stat.label}</span>
-                                                        <span className={`text-sm font-mono font-bold ${stat.accent || 'text-[var(--ww-text-1)]'}`}>{stat.val}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
                                         </div>
                                     </div>
                                 ) : (
