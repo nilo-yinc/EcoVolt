@@ -135,9 +135,9 @@ export default function HomeGateway() {
                 <motion.div variants={fadeIn} className="flex justify-center w-full">
                   <button
                     onClick={() => navigate('/dashboard')}
-                    className="inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-b from-cyan-400 to-cyan-600 hover:to-cyan-500 text-slate-950 px-16 sm:px-24 py-4 text-lg font-bold transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(34,211,238,0.3)] min-w-[320px]"
+                    className="flex justify-center flex-row items-center gap-3 rounded-2xl bg-gradient-to-b from-cyan-400 to-cyan-600 hover:to-cyan-500 text-slate-950 py-4 sm:py-5 text-lg sm:text-xl font-bold transition-all hover:scale-105 active:scale-95 shadow-[0_0_50px_rgba(34,211,238,0.35)] w-full max-w-[320px] sm:max-w-[420px]"
                   >
-                    Open Platform <ArrowRight size={20} />
+                    Open Platform <ArrowRight size={24} />
                   </button>
                 </motion.div>
 
