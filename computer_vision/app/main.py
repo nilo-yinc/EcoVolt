@@ -11,6 +11,7 @@ from app.cv.appliance import EnvironmentDetector
 from app.logic.engine import WasteDetector
 from app.api.state import latest_state
 from app.mqtt.client import IoTCommunicator
+from app.logic.predictor import SavingsPredictor 
 
 def run_vision_loop():
     print("🎥 Starting Vision Core...")
@@ -19,6 +20,8 @@ def run_vision_loop():
     logic_engine = WasteDetector(delay_seconds=5)
     iot = IoTCommunicator()
     appliance_memory_frames = 0 
+
+    savings_model = SavingsPredictor() 
 
     while True:
         ret, frame = cap.read()
@@ -47,6 +50,8 @@ def run_vision_loop():
         # Hardware trigger: Alert the ESP32 if the state changed
         iot.control_appliances(room_id="room_101", waste_detected=waste_detected)
 
+        financial_projections = savings_model.update_savings(waste_detected, fan_count, light_count)
+
         latest_state.update({
             "people_count": person_count,
             "fan_count": fan_count,
@@ -55,7 +60,8 @@ def run_vision_loop():
             "lights_on": env_details["lights_on"] or (light_count > 0),
             "screens_on": env_details["screens_on"],
             "waste_detected": waste_detected,
-            "brightness": env_details["brightness_level"]
+            "brightness": env_details["brightness_level"],
+            "savings_metrics": financial_projections
         })
 
         # --- DYNAMIC VISUALIZATION ---
