@@ -81,7 +81,7 @@ export default function HomeGateway() {
           : 'bg-transparent border-transparent py-4'
           }`}
       >
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-3 items-center">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-[1fr_auto_1fr] items-center">
           <div className="flex items-center justify-start">
             <div className="flex items-center gap-3 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <div className="relative flex items-center shrink-0">
@@ -94,7 +94,7 @@ export default function HomeGateway() {
             </div>
           </div>
 
-          <nav className="flex flex-wrap items-center justify-center gap-6 lg:gap-10 text-lg font-medium text-slate-300">
+          <nav className="flex items-center justify-center gap-6 lg:gap-8 text-lg font-medium text-slate-300">
             {['Platform', 'Solutions', 'Customers', 'Pricing'].map((item) => (
               <button
                 key={item}
