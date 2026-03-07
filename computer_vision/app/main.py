@@ -38,10 +38,8 @@ def run_vision_loop():
         if appliance_memory_frames > 0:
             combined_appliance_active = True
             appliance_memory_frames -= 1
-        
         else:
             combined_appliance_active = False
-        
 
         # Logic Engine: Evaluate if this is actual waste (empty room + appliances on)
         waste_detected = logic_engine.update(person_count, combined_appliance_active)
@@ -60,18 +58,34 @@ def run_vision_loop():
             "brightness": env_details["brightness_level"]
         })
 
+        # --- DYNAMIC VISUALIZATION ---
         display_frame = draw_boundaries_and_anonymize(frame.copy(), detections)
-        status_text = "WASTE DETECTED" if waste_detected else "SECURE"
-        color = (0, 0, 255) if waste_detected else (0, 255, 0)
+       
+        overlay = display_frame.copy()
+        cv2.rectangle(overlay, (0, 0), (frame.shape[1], 80), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.6, display_frame, 0.4, 0, display_frame)
+
+        # 2. Status Text (Red if waste, Green if secure)
+        status_text = "STATUS: WASTE DETECTED" if waste_detected else "STATUS: SYSTEM SECURE"
+        status_color = (0, 0, 255) if waste_detected else (0, 255, 0)
         
-        cv2.putText(display_frame, status_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+        cv2.putText(display_frame, status_text, (15, 30), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2, cv2.LINE_AA)
         
-        cv2.putText(display_frame, f"People: {person_count} | Fans: {fan_count} | AI Lights: {light_count} | ROI Lights: {env_details['lights_on']}", 
-                    (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        # 3. Info Line (Occupancy and Hardware status)
+        sensor_status = "ON" if env_details['lights_on'] else "OFF"
+        info_text = f"Occupants: {person_count} | AI Lights: {light_count} | ROI Sensor: {sensor_status}"
+        
+        cv2.putText(display_frame, info_text, (15, 65), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+        # 4. Branding Corner (Optional)
+        cv2.putText(display_frame, "EcoVolt", (frame.shape[1]-140, 30), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1, cv2.LINE_AA)
 
         cv2.imshow("Watt-Watch | YOLO26 Core", display_frame)
 
-        if cv2.waitKey(1) == 27:
+        if cv2.waitKey(1) == 27: # ESC to exit
             break
 
     cap.release()
