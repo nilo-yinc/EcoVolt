@@ -15,6 +15,11 @@ function resolveWsUrl() {
     return configured;
 }
 
+function resolveCvApiUrl() {
+    const configured = (import.meta.env.VITE_CV_API_URL || '').trim();
+    return configured || 'http://127.0.0.1:8000';
+}
+
 /**
  * WebSocket provider — connects to backend for real-time updates.
  * In demo mode (no backend), simulates live updates every few seconds.
@@ -25,6 +30,7 @@ export function WebSocketProvider({ children }) {
     const wsRef = useRef(null);
     const reconnectTimer = useRef(null);
     const demoTimer = useRef(null);
+    const cvPollTimer = useRef(null);
 
     // ── Attempt real WebSocket connection ─────────────────────────
     const connect = useCallback(() => {
@@ -111,14 +117,52 @@ export function WebSocketProvider({ children }) {
         }, 4000);
     }, [dispatch]);
 
+    const startCvPolling = useCallback(() => {
+        if (cvPollTimer.current) return;
+        const cvBase = resolveCvApiUrl().replace(/\/+$/, '');
+
+        cvPollTimer.current = setInterval(async () => {
+            try {
+                const res = await fetch(`${cvBase}/ghost/frame`, { cache: 'no-store' });
+                if (!res.ok) return;
+                const frame = await res.json();
+                if (!frame?.image_b64) return;
+
+                dispatch({
+                    type: 'SET_GHOST_FRAME',
+                    payload: { ...frame, received_at: Date.now() },
+                });
+
+                if (frame?.room_id) {
+                    dispatch({
+                        type: 'UPDATE_ROOM',
+                        payload: {
+                            id: frame.room_id,
+                            person_count: frame.person_count ?? 0,
+                            waste_detected: !!frame.waste_detected,
+                            status: frame.waste_detected ? 'waste' : ((frame.person_count ?? 0) > 0 ? 'secure' : 'recently_vacated'),
+                            last_updated: Date.now(),
+                        },
+                    });
+                }
+
+                dispatch({ type: 'SET_BACKEND_ONLINE', payload: true });
+            } catch {
+                // Leave existing status if another backend connection is active.
+            }
+        }, 700);
+    }, [dispatch]);
+
     useEffect(() => {
         connect();
+        startCvPolling();
         return () => {
             if (wsRef.current) wsRef.current.close();
             if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
             if (demoTimer.current) clearInterval(demoTimer.current);
+            if (cvPollTimer.current) clearInterval(cvPollTimer.current);
         };
-    }, [connect]);
+    }, [connect, startCvPolling]);
 
     return (
         <WebSocketContext.Provider value={{ connected }}>

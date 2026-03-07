@@ -5,6 +5,11 @@ import { useApp } from '../context/AppContext';
 import { useESP32 } from '../hooks/useESP32';
 import { rooms as mockRooms } from '../data/mockData';
 
+function resolveCvApiUrl() {
+    const configured = (import.meta.env.VITE_CV_API_URL || '').trim();
+    return configured || 'http://127.0.0.1:8000';
+}
+
 export default function GhostView() {
     const { rooms: liveRooms } = useRooms();
     const { devices, ghostFrames, backendOnline } = useApp();
@@ -14,6 +19,8 @@ export default function GhostView() {
     const [feedError, setFeedError] = useState('');
     const [localCameraReady, setLocalCameraReady] = useState(false);
     const [timeNow, setTimeNow] = useState(Date.now());
+    const [directCvFrame, setDirectCvFrame] = useState(null);
+    const [directCvReady, setDirectCvReady] = useState(false);
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const cameraRequestRef = useRef(false);
@@ -54,6 +61,55 @@ export default function GhostView() {
     useEffect(() => {
         const timer = setInterval(() => setTimeNow(Date.now()), 1000);
         return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        const cvBase = resolveCvApiUrl().replace(/\/+$/, '');
+
+        const poll = async () => {
+            try {
+                const res = await fetch(`${cvBase}/ghost/frame?t=${Date.now()}`, { cache: 'no-store' });
+                if (!res.ok) return;
+                const frame = await res.json();
+                if (!mounted || !frame?.image_b64) return;
+                setDirectCvFrame({ ...frame, received_at: Date.now() });
+                setDirectCvReady(true);
+            } catch {
+                // Keep previous frame and fallback behavior.
+            }
+        };
+
+        poll();
+        const timer = setInterval(poll, 800);
+        return () => {
+            mounted = false;
+            clearInterval(timer);
+        };
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        const cvBase = resolveCvApiUrl().replace(/\/+$/, '');
+
+        const pollStatus = async () => {
+            try {
+                const res = await fetch(`${cvBase}/ghost/status?t=${Date.now()}`, { cache: 'no-store' });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!mounted) return;
+                setDirectCvReady(!!data?.ready);
+            } catch {
+                // keep previous ready state
+            }
+        };
+
+        pollStatus();
+        const timer = setInterval(pollStatus, 1000);
+        return () => {
+            mounted = false;
+            clearInterval(timer);
+        };
     }, []);
 
     const requestCamera = useCallback(async () => {
@@ -138,16 +194,21 @@ export default function GhostView() {
             !latest || (frame?.timestamp || 0) > (latest?.timestamp || 0) ? frame : latest
         ), null);
     }, [ghostFrames]);
-    const activeGhostFrame = (activeRoom ? ghostFrames[activeRoom.id] : null) || latestGhostFrame;
+    const activeGhostFrame = (activeRoom ? ghostFrames[activeRoom.id] : null)
+        || ((directCvFrame && (!activeRoom || directCvFrame.room_id === activeRoom.id)) ? directCvFrame : null)
+        || latestGhostFrame
+        || directCvFrame;
     const ghostMeta = activeGhostFrame || {};
     const activeGhostSrc = activeGhostFrame?.image_b64
         ? `data:image/jpeg;base64,${activeGhostFrame.image_b64}`
         : '';
+    const cvImageUrl = `${resolveCvApiUrl().replace(/\/+$/, '')}/ghost/latest.jpg?t=${Math.floor(timeNow / 500)}`;
     const frameSeenAt = activeGhostFrame?.received_at || activeGhostFrame?.timestamp || 0;
     const ghostFresh = !!frameSeenAt && (Date.now() - frameSeenAt < 3500);
-    // Prefer CV/YOLO ghost stream (with boxes/labels). Use local camera only as fallback.
-    const usingYoloStream = ghostMode && !!activeGhostSrc && ghostFresh;
-    const usingLocalGhostStream = ghostMode && !usingYoloStream && localCameraReady;
+    const peopleDetected = ghostMeta.person_count ?? activeRoom?.person_count ?? activeRoom?.occupancy ?? 0;
+    // Privacy-first: always show anonymized stream, never raw local live mode.
+    const usingYoloStream = (!!activeGhostSrc && ghostFresh) || directCvReady;
+    const usingLocalGhostStream = !usingYoloStream && localCameraReady;
     const isWaste = (ghostMeta.waste_detected ?? activeRoom?.waste_detected) || activeRoom?.status === 'waste';
     const statusText = isWaste ? 'WASTE' : 'CLEAR';
     const statusClass = isWaste ? 'text-red-400' : 'text-emerald-400';
@@ -317,23 +378,38 @@ export default function GhostView() {
                                 </div>
 
                                 {dataOnlyMode ? (
-                                    <div className="flex items-center justify-center p-12" style={{ minHeight: '500px' }}>
-                                        <div className="text-center">
-                                            <div className="text-[var(--ww-text-muted)] text-5xl font-mono mb-4">[X]</div>
-                                            <p className="text-xs font-mono text-[var(--ww-text-3)] mb-6">VISUAL FEED DISABLED</p>
-                                            <div className="grid grid-cols-3 gap-4">
+                                    <div className="p-6 md:p-8" style={{ minHeight: '500px' }}>
+                                        <div className="text-center mb-6">
+                                            <div className="text-[var(--ww-text-muted)] text-4xl font-mono mb-2">[X]</div>
+                                            <p className="text-sm font-mono text-[var(--ww-text-3)]">VISUAL FEED DISABLED (DATA ONLY MODE)</p>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="bg-white/[0.02] rounded-md p-4">
+                                                <div className="hud-label mb-3">DETECTION METRICS</div>
+                                                {detectionData.map((item, i) => (
+                                                    <div key={i} className="flex justify-between items-center py-2 border-b border-white/[0.03] last:border-0">
+                                                        <span className="text-sm font-mono text-[var(--ww-text-3)]">{item.label}</span>
+                                                        <span className={`text-sm font-mono font-bold ${item.on ? 'text-amber-400' : 'text-[var(--ww-text-muted)]'}`}>
+                                                            {item.value}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="bg-white/[0.02] rounded-md p-4">
+                                                <div className="hud-label mb-3">SYSTEM STATUS</div>
                                                 {[
-                                                    { label: 'PEOPLE', val: activeRoom.person_count, accent: 'text-cyan-400' },
-                                                    { label: 'STATUS', val: statusText, accent: statusClass },
-                                                    {
-                                                        label: 'WASTE',
-                                                        val: activeRoom.waste_duration ? `${Math.floor(activeRoom.waste_duration / 60)}m` : '0m',
-                                                        accent: 'text-amber-400',
-                                                    },
+                                                    { label: 'People Count', val: peopleDetected, accent: 'text-cyan-400' },
+                                                    { label: 'Room', val: activeRoom.name },
+                                                    { label: 'Monitoring', val: activeRoom.monitoring || 'CCTV' },
+                                                    { label: 'Brightness', val: ghostMeta.brightness !== undefined ? `${ghostMeta.brightness}` : 'N/A' },
+                                                    { label: 'Latency', val: ghostMeta.latency_ms !== undefined ? `${(ghostMeta.latency_ms / 1000).toFixed(2)}s` : 'N/A' },
+                                                    { label: 'Power Draw', val: `${totalPower}W`, accent: totalPower > 0 ? 'text-amber-400' : '' },
+                                                    { label: 'Status', val: statusText, accent: statusClass },
+                                                    { label: 'Backend', val: backendOnline ? 'ONLINE' : 'OFFLINE', accent: backendOnline ? 'text-emerald-400' : 'text-red-400' },
                                                 ].map((stat, index) => (
-                                                    <div key={index} className="bg-white/[0.02] rounded-md p-3">
-                                                        <div className="text-[8px] font-mono text-[var(--ww-text-muted)] mb-1">{stat.label}</div>
-                                                        <div className={`text-lg font-mono font-bold ${stat.accent}`}>{stat.val}</div>
+                                                    <div key={index} className="flex justify-between items-center py-2 border-b border-white/[0.03] last:border-0">
+                                                        <span className="text-sm font-mono text-[var(--ww-text-muted)]">{stat.label}</span>
+                                                        <span className={`text-sm font-mono font-bold ${stat.accent || 'text-[var(--ww-text-1)]'}`}>{stat.val}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -342,7 +418,11 @@ export default function GhostView() {
                                 ) : (
                                     <div className="relative" style={{ minHeight: '500px' }}>
                                         {usingYoloStream ? (
-                                            <img src={activeGhostSrc} alt="Ghost feed" className="w-full h-[500px] object-contain bg-black" />
+                                            <img
+                                                src={activeGhostSrc || cvImageUrl}
+                                                alt="Ghost feed"
+                                                className="w-full h-[500px] object-contain bg-black"
+                                            />
                                         ) : usingLocalGhostStream ? (
                                             <div className="relative w-full h-[500px] bg-black overflow-hidden">
                                                 <video
@@ -353,11 +433,11 @@ export default function GhostView() {
                                                     className="w-full h-[500px] object-contain bg-black [filter:blur(10px)_saturate(0.9)]"
                                                 />
                                             </div>
-                                        ) : ghostMode ? (
+                                        ) : (
                                             <div className="w-full h-[500px] flex items-center justify-center text-center bg-black/80 px-6">
                                                 <div>
                                                     <div className="text-sm font-mono text-red-400 mb-2">PRIVACY LOCK</div>
-                                                    <div className="text-xs font-mono text-[var(--ww-text-3)]">Ghost Mode needs YOLO stream.</div>
+                                                    <div className="text-xs font-mono text-[var(--ww-text-3)]">Privacy stream unavailable.</div>
                                                     <div className="text-xs font-mono text-[var(--ww-text-3)] mt-1">
                                                         Start computer_vision service for person-only blur.
                                                     </div>
@@ -375,25 +455,17 @@ export default function GhostView() {
                                                     )}
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <video
-                                                ref={videoRef}
-                                                autoPlay
-                                                muted
-                                                playsInline
-                                                className="w-full h-[500px] object-contain bg-black"
-                                            />
                                         )}
                                         {ghostMode && (
                                             <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_30%_50%,rgba(88,28,135,0.20),transparent_50%)]" />
                                         )}
                                         <div className="absolute top-4 left-4">
                                             <div className="text-[9px] font-mono text-purple-400 tracking-wider">
-                                                {ghostMode ? (usingYoloStream ? 'GHOST MODE' : 'LOCAL GHOST MODE') : 'LIVE MODE'}
+                                                {usingYoloStream ? 'GHOST MODE' : 'LOCAL GHOST MODE'}
                                             </div>
                                             <div className="text-xs font-mono text-[var(--ww-text-1)] mt-1">
                                                 {usingYoloStream
-                                                    ? `${ghostMeta.person_count ?? activeRoom.person_count ?? activeRoom.occupancy ?? 0} detected`
+                                                    ? `${peopleDetected} detected`
                                                     : usingLocalGhostStream
                                                         ? 'Live local camera (privacy blur)'
                                                         : 'N/A (camera/CV required)'}
@@ -404,14 +476,13 @@ export default function GhostView() {
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-purple-400" />
                                                 <span className="text-[8px] font-mono text-[var(--ww-text-3)]">
-                                                    {(!ghostMode && feedError)
-                                                        || (!backendOnline
-                                                            ? 'Backend offline: using local ghost camera'
-                                                            : usingYoloStream
-                                                                ? 'YOLO blur stream active'
-                                                                : usingLocalGhostStream
-                                                                    ? 'Local ghost camera active (fallback)'
-                                                                    : 'Camera/CV unavailable: privacy lock active')}
+                                                    {(!backendOnline
+                                                        ? 'Backend offline: using local ghost camera'
+                                                        : usingYoloStream
+                                                            ? 'YOLO blur stream active'
+                                                            : usingLocalGhostStream
+                                                                ? 'Local ghost camera active (fallback)'
+                                                                : 'Camera/CV unavailable: privacy lock active')}
                                                 </span>
                                             </div>
                                         </div>
@@ -427,8 +498,8 @@ export default function GhostView() {
                                 <div className="hud-label mb-3">DETECTION DATA</div>
                                 {detectionData.map((item, i) => (
                                     <div key={i} className="flex justify-between items-center py-2 border-b border-white/[0.03] last:border-0">
-                                        <span className="text-[10px] font-mono text-[var(--ww-text-3)]">{item.label}</span>
-                                        <span className={`text-xs font-mono font-bold tracking-wider ${item.on ? 'text-amber-400' : 'text-[var(--ww-text-muted)]'}`}>
+                                        <span className="text-sm font-mono text-[var(--ww-text-3)]">{item.label}</span>
+                                        <span className={`text-sm font-mono font-bold tracking-wider ${item.on ? 'text-amber-400' : 'text-[var(--ww-text-muted)]'}`}>
                                             {item.value}
                                         </span>
                                     </div>
@@ -439,6 +510,7 @@ export default function GhostView() {
                             <div className="hud-card p-4">
                                 <div className="hud-label mb-3">FEED STATUS</div>
                                 {[
+                                    { label: 'People Count', val: peopleDetected, accent: 'text-cyan-400' },
                                     { label: 'Room', val: activeRoom.name },
                                     { label: 'Monitoring', val: activeRoom.monitoring || 'CCTV' },
                                     { label: 'Brightness', val: ghostMeta.brightness !== undefined ? `${ghostMeta.brightness}` : 'N/A' },
@@ -448,8 +520,8 @@ export default function GhostView() {
                                     { label: 'Backend', val: backendOnline ? 'ONLINE' : 'OFFLINE', accent: backendOnline ? 'text-emerald-400' : 'text-red-400' },
                                 ].map((stat, index) => (
                                     <div key={index} className="flex justify-between items-center py-2 border-b border-white/[0.03] last:border-0">
-                                        <span className="text-[10px] font-mono text-[var(--ww-text-muted)]">{stat.label}</span>
-                                        <span className={`text-xs font-mono font-bold ${stat.accent || 'text-[var(--ww-text-1)]'}`}>{stat.val}</span>
+                                        <span className="text-sm font-mono text-[var(--ww-text-muted)]">{stat.label}</span>
+                                        <span className={`text-sm font-mono font-bold ${stat.accent || 'text-[var(--ww-text-1)]'}`}>{stat.val}</span>
                                     </div>
                                 ))}
                             </div>
@@ -460,7 +532,7 @@ export default function GhostView() {
                                 {['No raw video stored', 'Local processing only', 'Face/body blur in Ghost Mode', 'Audit-logged access'].map((item, index) => (
                                     <div key={index} className="flex items-center gap-2 py-1.5">
                                         <div className="w-1 h-1 rounded-full bg-emerald-400" />
-                                        <span className="text-[10px] font-mono text-[var(--ww-text-2)]">{item}</span>
+                                        <span className="text-sm font-mono text-[var(--ww-text-2)]">{item}</span>
                                     </div>
                                 ))}
                             </div>
@@ -475,8 +547,8 @@ export default function GhostView() {
                                     { label: 'Monitors', on: activeRoom.appliances?.monitors },
                                 ].map((appliance, index) => (
                                     <div key={index} className="flex items-center justify-between py-1.5 border-b border-white/[0.03] last:border-0">
-                                        <span className="text-[10px] font-mono text-[var(--ww-text-3)]">{appliance.label}</span>
-                                        <span className={`text-[9px] font-mono font-bold tracking-wider ${appliance.on ? 'text-amber-400' : 'text-[var(--ww-text-muted)]'}`}>
+                                        <span className="text-sm font-mono text-[var(--ww-text-3)]">{appliance.label}</span>
+                                        <span className={`text-sm font-mono font-bold tracking-wider ${appliance.on ? 'text-amber-400' : 'text-[var(--ww-text-muted)]'}`}>
                                             {appliance.on ? 'ON' : 'OFF'}
                                         </span>
                                     </div>
