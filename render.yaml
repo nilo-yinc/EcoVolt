@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ecovolt-cv-fastapi
+    runtime: python
+    rootDir: computer_vision
+    buildCommand: pip install -r requirements-render.txt
+    startCommand: python run.py
+    healthCheckPath: /health
+    envVars:
+      - key: RUN_VISION
+        value: "0"
+      - key: CV_SHOW_WINDOW
+        value: "0"
+      - key: CV_ROOM_ID
+        value: test-room

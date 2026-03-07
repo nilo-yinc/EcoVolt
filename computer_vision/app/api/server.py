@@ -19,6 +19,12 @@ app.add_middleware(
 def root():
     return {"message": "Watt-Watch AI Module is Online"}
 
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+
 @app.get("/status")
 def get_status():
     ## For frontend dashboard
