@@ -111,10 +111,10 @@ export default function HomeGateway() {
         </div>
       </motion.header>
 
-      <main className="relative z-10 pt-32 lg:pt-48 pb-16 flex flex-col gap-12 lg:gap-24">
+      <main className="relative z-10 pt-44 lg:pt-56 pb-16 flex flex-col gap-12">
 
         {/* HERO SECTION */}
-        <section className="max-w-7xl mx-auto w-full px-6 lg:px-8 relative mt-24 lg:mt-28">
+        <section className="max-w-7xl mx-auto w-full px-6 lg:px-8 relative mt-32">
           <motion.div className="flex flex-col items-center text-center w-full">
 
             <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
@@ -124,7 +124,7 @@ export default function HomeGateway() {
                 variants={staggerContainer}
                 className="flex flex-col items-center"
               >
-                <motion.h1 variants={fadeIn} className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-8 leading-[1.1]">
+                <motion.h1 variants={fadeIn} className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-8 leading-[1.1] ">
                   Intelligent <span className="text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.4)]">energy</span> surveillance.
                 </motion.h1>
 
@@ -135,7 +135,7 @@ export default function HomeGateway() {
                 <motion.div variants={fadeIn} className="flex justify-center w-full">
                   <button
                     onClick={() => navigate('/dashboard')}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-cyan-400 to-cyan-600 hover:to-cyan-500 text-slate-950 px-10 py-4 text-lg font-bold transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(34,211,238,0.3)] min-w-[220px]"
+                    className="inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-b from-cyan-400 to-cyan-600 hover:to-cyan-500 text-slate-950 px-16 sm:px-24 py-4 text-lg font-bold transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(34,211,238,0.3)] min-w-[320px]"
                   >
                     Open Platform <ArrowRight size={20} />
                   </button>
@@ -285,22 +285,24 @@ export default function HomeGateway() {
         </section>
 
         {/* PRICING */}
-        <section id="pricing" className="max-w-7xl mx-auto px-6 lg:px-8 mt-40 scroll-mt-32 w-full">
-          <div className="text-center w-full mb-16 pt-2">
-            <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-5">Simple, transparent pricing</h2>
+        <section id="pricing" className="max-w-7xl mx-auto px-6 lg:px-8 mt-40 scroll-mt-32 w-full py-20">
+          <div className="text-center w-full mb-10">
+            <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">Simple, transparent pricing</h2>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">Start for free, then scale when your campus needs advanced automation and longer telemetry retention.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 items-stretch w-full mt-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-stretch w-full max-w-5xl mx-auto mt-16">
             {/* Starter */}
-            <div className="rounded-3xl border border-white/10 bg-slate-900/30 p-8">
-              <h3 className="text-xl font-bold text-white mb-2">Starter</h3>
-              <p className="text-slate-400 text-sm h-10">Perfect for pilot rollouts and single buildings.</p>
-              <div className="my-6">
+            <div className="rounded-3xl border border-white/10 bg-slate-900/30 p-8 lg:p-10 flex flex-col space-y-6">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-3">Starter</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">Perfect for pilot rollouts and single buildings.</p>
+              </div>
+              <div>
                 <span className="text-4xl font-extrabold text-white">$0</span>
                 <span className="text-slate-500"> /mo forever</span>
               </div>
-              <button onClick={() => navigate('/dashboard')} className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 font-semibold hover:bg-white/5 transition-colors mb-8">Start Free</button>
+              <button onClick={() => navigate('/dashboard')} className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 font-semibold hover:bg-white/5 transition-colors">Start Free</button>
               <ul className="space-y-4 text-sm text-slate-300">
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-slate-500 shrink-0" /> 1 Campus Location</li>
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-slate-500 shrink-0" /> Basic Dashboard & Alerts</li>
@@ -309,16 +311,18 @@ export default function HomeGateway() {
             </div>
 
             {/* Pro */}
-            <div className="rounded-3xl border-2 border-cyan-500/50 bg-slate-900/80 p-8 relative shadow-[0_0_40px_rgba(34,211,238,0.1)]">
-              <div className="inline-flex mb-4 bg-cyan-500 text-slate-950 font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wide">Most Popular</div>
+            <div className="rounded-3xl border-2 border-cyan-500/50 bg-slate-900/80 p-8 lg:p-10 relative shadow-[0_0_40px_rgba(34,211,238,0.1)] flex flex-col space-y-6">
+              <div className="inline-flex self-start bg-cyan-500 text-slate-950 font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wide">Most Popular</div>
 
-              <h3 className="text-xl font-bold text-white mb-2">Professional</h3>
-              <p className="text-slate-400 text-sm h-10">For growing institutions requiring advanced controls.</p>
-              <div className="my-6">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-3">Professional</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">For growing institutions requiring advanced controls.</p>
+              </div>
+              <div>
                 <span className="text-4xl font-extrabold text-white">$49</span>
                 <span className="text-slate-500"> /month</span>
               </div>
-              <button className="w-full rounded-xl bg-cyan-400 px-4 py-3 font-bold text-slate-950 hover:bg-cyan-300 transition-colors mb-8 shadow-lg shadow-cyan-500/25">Upgrade to Pro</button>
+              <button className="w-full rounded-xl bg-cyan-400 px-4 py-3 font-bold text-slate-950 hover:bg-cyan-300 transition-colors shadow-lg shadow-cyan-500/25">Upgrade to Pro</button>
               <ul className="space-y-4 text-sm text-slate-200">
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-cyan-400 shrink-0" /> Up to 5 Campuses</li>
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-cyan-400 shrink-0" /> Automated Action Rules</li>
@@ -328,13 +332,15 @@ export default function HomeGateway() {
             </div>
 
             {/* Enterprise */}
-            <div className="rounded-3xl border border-white/10 bg-slate-900/30 p-8">
-              <h3 className="text-xl font-bold text-white mb-2">Enterprise</h3>
-              <p className="text-slate-400 text-sm h-10">Custom architecture for city-scale deployments.</p>
-              <div className="my-6">
+            <div className="rounded-3xl border border-white/10 bg-slate-900/30 p-8 lg:p-10 flex flex-col space-y-6">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-3">Enterprise</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">Custom architecture for city-scale deployments.</p>
+              </div>
+              <div>
                 <span className="text-4xl font-extrabold text-white">Custom</span>
               </div>
-              <button className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 font-semibold hover:bg-white/5 transition-colors mb-8">Contact Sales</button>
+              <button className="w-full rounded-xl border border-white/20 bg-transparent px-4 py-3 font-semibold hover:bg-white/5 transition-colors">Contact Sales</button>
               <ul className="space-y-4 text-sm text-slate-300">
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-slate-500 shrink-0" /> Unlimited Campuses</li>
                 <li className="flex gap-3"><CheckCircle2 size={18} className="text-slate-500 shrink-0" /> On-premise deployment</li>
