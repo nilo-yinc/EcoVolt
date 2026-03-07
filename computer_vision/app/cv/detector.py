@@ -36,18 +36,26 @@ def detect_objects(frame):
             for box in r.boxes:
                 conf = float(box.conf[0])
                 
+<<<<<<< HEAD
                 if conf > 0.25: 
+=======
+                if conf > 0.4: 
+>>>>>>> 3264fe2d71ae46e89d250d2faefadef3b5afd739
                     cls_name = hardware_model.names[int(box.cls[0])].lower()
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     
                     if "fan" in cls_name:
                         fan_count += 1
+<<<<<<< HEAD
                         detections.append({
                             "label": "FAN",
                             "confidence": conf,
                             "box": [int(x1), int(y1), int(x2), int(y2)]
                         })
                     
+=======
+                        
+>>>>>>> 3264fe2d71ae46e89d250d2faefadef3b5afd739
                     elif "light" in cls_name:
                         light_count += 1
 
