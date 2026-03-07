@@ -1,3 +1,310 @@
+<<<<<<< HEAD
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ══════════════════════════════════════════════════
+   EcoVolt — Design System
+   ══════════════════════════════════════════════════ */
+
+/* ── Dark theme (default) ───────────────────────── */
+:root,
+html.dark {
+  --bg: #080c12;
+  --surface: rgba(14, 21, 32, 0.85);
+  --surface-2: rgba(18, 27, 40, 0.55);
+  --surface-3: rgba(24, 35, 52, 0.5);
+  --nav-bg: rgba(10, 16, 26, 0.8);
+  --sidebar-bg: rgba(8, 12, 20, 0.92);
+  --border: rgba(255, 255, 255, 0.06);
+  --text-1: #e8eeff;
+  --text-2: #b0bdd6;
+  --text-3: #6879a0;
+  --text-4: #3e506e;
+  --accent: #4f6ef7;
+  --accent-dim: rgba(79, 110, 247, 0.12);
+  --green: #34d399;
+  --green-dim: rgba(52, 211, 153, 0.12);
+  --red: #f87171;
+  --red-dim: rgba(248, 113, 113, 0.12);
+  --amber: #fbbf24;
+  --amber-dim: rgba(251, 191, 36, 0.12);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.45);
+
+  /* UI component tokens */
+  --ww-bg: var(--bg);
+  --ww-card: var(--surface);
+  --ww-border: var(--border);
+  --ww-text-1: var(--text-1);
+  --ww-text-2: var(--text-2);
+  --ww-text-3: var(--text-3);
+  --ww-text-muted: var(--text-4);
+  --ww-accent: var(--accent);
+  --ww-accent-dim: var(--accent-dim);
+  --ww-shadow: var(--shadow-md);
+}
+
+/* ── Light theme ────────────────────────────────── */
+html:not(.dark),
+:root[data-theme="light"] {
+  --bg: #f0f4f8;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-2: rgba(241, 245, 251, 0.7);
+  --surface-3: rgba(230, 237, 246, 0.65);
+  --nav-bg: rgba(255, 255, 255, 0.85);
+  --sidebar-bg: rgba(251, 253, 255, 0.95);
+  --border: rgba(14, 26, 48, 0.08);
+  --text-1: #0e1a30;
+  --text-2: #3a4c6e;
+  --text-3: #6879a0;
+  --text-4: #96a5c4;
+  --accent: #4f6ef7;
+  --accent-dim: rgba(79, 110, 247, 0.08);
+  --green: #059669;
+  --green-dim: rgba(5, 150, 105, 0.08);
+  --red: #dc2626;
+  --red-dim: rgba(220, 38, 38, 0.08);
+  --amber: #d97706;
+  --amber-dim: rgba(217, 119, 6, 0.08);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.10);
+
+  --ww-bg: var(--bg);
+  --ww-card: var(--surface);
+  --ww-border: var(--border);
+  --ww-text-1: var(--text-1);
+  --ww-text-2: var(--text-2);
+  --ww-text-3: var(--text-3);
+  --ww-text-muted: var(--text-4);
+  --ww-accent: var(--accent);
+  --ww-accent-dim: var(--accent-dim);
+  --ww-shadow: var(--shadow-md);
+}
+
+/* ── Base resets ─────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ── Typography ──────────────────────────────────── */
+.brand-wordmark {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.hud-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* ── Cards ───────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  border-color: rgba(79, 110, 247, 0.12);
+  box-shadow: var(--shadow-md);
+}
+
+.hud-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  position: relative;
+}
+
+/* ── Badges ──────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.badge-muted {
+  background: var(--surface-3);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+}
+
+/* ── Navigation ──────────────────────────────────── */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-3);
+  text-decoration: none;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+}
+
+.nav-link:hover {
+  color: var(--text-1);
+  background: var(--surface-2);
+}
+
+.nav-link-active {
+  color: var(--accent) !important;
+  background: var(--accent-dim) !important;
+  border-color: rgba(79, 110, 247, 0.12) !important;
+  font-weight: 600;
+}
+
+.nav-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  padding: 0 0.75rem;
+}
+
+/* ── Form inputs ─────────────────────────────────── */
+.form-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.form-input:focus {
+  border-color: rgba(79, 110, 247, 0.3);
+}
+
+.form-input::placeholder {
+  color: var(--text-4);
+}
+
+/* ── CCTV scan animation ─────────────────────────── */
+@keyframes feedScan {
+  0% {
+    top: 10%;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.6;
+  }
+
+  90% {
+    opacity: 0.6;
+  }
+
+  100% {
+    top: 85%;
+    opacity: 0;
+  }
+}
+
+.main-scanline {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg,
+      transparent,
+      transparent 2px,
+      rgba(34, 211, 238, 0.015) 2px,
+      rgba(34, 211, 238, 0.015) 4px);
+  pointer-events: none;
+}
+
+/* ── Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(79, 110, 247, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 110, 247, 0.35);
+}
+
+/* ── Corner bracket decoration ───────────────────── */
+.corner-bracket {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+}
+
+.corner-bracket-tl {
+  top: 6px;
+  left: 6px;
+  border-top: 1px solid var(--accent);
+  border-left: 1px solid var(--accent);
+  opacity: 0.3;
+}
+
+.corner-bracket-br {
+  bottom: 6px;
+  right: 6px;
+  border-bottom: 1px solid var(--accent);
+  border-right: 1px solid var(--accent);
+  opacity: 0.3;
+}
+=======
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -66,3 +373,4 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+>>>>>>> 3264fe2d71ae46e89d250d2faefadef3b5afd739
