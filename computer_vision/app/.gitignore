@@ -1,3 +1,11 @@
 fan_light_model.pt
 mobileclip2_b.ts
 yoloe-26l-seg.pt
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# AI / YOLO Cache
+*.cache
+.cache/
