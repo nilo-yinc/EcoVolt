@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useRooms } from '../hooks/useRooms';
 import {
     DoorOpen, Users, Projector, MonitorSmartphone, Lightbulb,
-    Clock, MapPin, Camera, ShieldCheck, AlertTriangle,
+    Fan, Snowflake, Clock, MapPin, Camera, ShieldCheck, AlertTriangle,
 } from 'lucide-react';
 import RoomCard from '../components/RoomCard';
 import StatusBadge from '../components/StatusBadge';
@@ -41,8 +41,8 @@ export default function Rooms() {
                             key={f.key}
                             onClick={() => setFilter(f.key)}
                             className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all ${filter === f.key
-                                    ? 'bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--border-2)]'
-                                    : 'bg-[var(--surface-2)] text-[var(--text-3)] border border-[var(--border)] hover:bg-[var(--surface-2)]'
+                                ? 'bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--border-2)]'
+                                : 'bg-[var(--surface-2)] text-[var(--text-3)] border border-[var(--border)] hover:bg-[var(--surface-2)]'
                                 }`}
                         >
                             {f.label} ({f.count})
@@ -120,7 +120,9 @@ export default function Rooms() {
                                 <div className="space-y-2">
                                     <ApplianceRow icon={Projector} label="Projector" on={detail.appliances?.projector} />
                                     <ApplianceRow icon={MonitorSmartphone} label="Monitors" on={detail.appliances?.monitors} />
+                                    <ApplianceRow icon={Fan} label="Fan" on={detail.appliances?.fan} />
                                     <ApplianceRow icon={Lightbulb} label="Lights" on={detail.appliances?.lights} />
+                                    <ApplianceRow icon={Snowflake} label="AC" on={detail.appliances?.ac} />
                                 </div>
                             </div>
 

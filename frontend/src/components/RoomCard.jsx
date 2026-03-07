@@ -1,4 +1,4 @@
-import { Users, MonitorSmartphone, Projector, Lightbulb, Fan, Clock } from 'lucide-react';
+import { Users, MonitorSmartphone, Projector, Lightbulb, Fan, Snowflake, Clock } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 
 function formatDuration(seconds) {
@@ -59,6 +59,7 @@ export default function RoomCard({ room }) {
                 <ApplianceChip icon={MonitorSmartphone} label="Monitors" on={appliances?.monitors} />
                 <ApplianceChip icon={Fan} label="Fan" on={appliances?.fan} />
                 <ApplianceChip icon={Lightbulb} label="Lights" on={appliances?.lights} />
+                <ApplianceChip icon={Snowflake} label="AC" on={appliances?.ac} />
             </div>
         </div>
     );

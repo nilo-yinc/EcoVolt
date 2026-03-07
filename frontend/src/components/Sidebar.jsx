@@ -6,6 +6,7 @@ import {
     Map, Eye, Ghost, Power, TrendingUp, AlertTriangle, Monitor,
     FileText, Sliders, Shield, Sun, Moon,
 } from 'lucide-react';
+import logoImg from '../assets/ecovolt-logo.png';
 
 const sections = [
     {
@@ -44,24 +45,16 @@ const sections = [
     },
 ];
 
-/** Real SVG Logo — lightning bolt in a rounded square */
+/** EcoVolt Logo */
 function Logo({ size = 32 }) {
     return (
-        <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="40" height="40" rx="10" fill="var(--accent)" />
-            {/* Shield outline */}
-            <path
-                d="M20 6 L30 10.5 L30 20 C30 26 25.5 31 20 33 C14.5 31 10 26 10 20 L10 10.5 Z"
-                fill="rgba(255,255,255,0.15)"
-                stroke="rgba(255,255,255,0.6)"
-                strokeWidth="1"
-            />
-            {/* Lightning bolt */}
-            <path
-                d="M21.5 10 L15.5 21 H20 L18.5 30 L24.5 19 H20 Z"
-                fill="#ffffff"
-            />
-        </svg>
+        <img
+            src={logoImg}
+            alt="EcoVolt"
+            width={size}
+            height={size}
+            style={{ borderRadius: '10px', objectFit: 'cover' }}
+        />
     );
 }
 
