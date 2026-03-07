@@ -9,7 +9,7 @@ from app.cv.detector import detect_objects
 from app.cv.privacy import draw_boundaries_and_anonymize
 from app.cv.appliance import EnvironmentDetector
 from app.logic.engine import WasteDetector
-from app.api.state import latest_state
+from app.api.state import latest_state 
 from app.mqtt.client import IoTCommunicator
 from app.logic.predictor import SavingsPredictor 
 
@@ -66,7 +66,7 @@ def run_vision_loop():
 
         # --- DYNAMIC VISUALIZATION ---
         display_frame = draw_boundaries_and_anonymize(frame.copy(), detections)
-       
+               
         overlay = display_frame.copy()
         cv2.rectangle(overlay, (0, 0), (frame.shape[1], 80), (0, 0, 0), -1)
         cv2.addWeighted(overlay, 0.6, display_frame, 0.4, 0, display_frame)
