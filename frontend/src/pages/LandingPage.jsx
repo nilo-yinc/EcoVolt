@@ -22,7 +22,7 @@ export default function LandingPage() {
         setIsSubmitting(true);
         try {
             await login(username, password);
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             setError(err.message);
         } finally {
@@ -35,7 +35,7 @@ export default function LandingPage() {
         setIsGuestLoading(true);
         try {
             await loginAsGuest();
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             setError('Failed to login as guest');
             setIsGuestLoading(false);
@@ -90,6 +90,9 @@ export default function LandingPage() {
                                 <Shield className="w-5 h-5 text-cyan-400" />
                                 <h2 className="text-xl font-semibold text-white">System Access</h2>
                             </div>
+                            <p className="mb-5 text-xs text-cyan-200/80 border border-cyan-500/20 bg-cyan-500/5 rounded-lg px-3 py-2">
+                                Admin authentication is restricted to <span className="font-semibold">admin / admin</span>. Guest mode opens the current platform view.
+                            </p>
 
                             <form onSubmit={handleLogin} className="space-y-5">
                                 <div>

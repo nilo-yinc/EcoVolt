@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const PAGE_TITLES = {
-    '/': { label: 'Dashboard', sub: 'Real-time campus overview' },
+    '/dashboard': { label: 'Dashboard', sub: 'Real-time campus overview' },
     '/campus': { label: 'Campus Map', sub: 'Multi-building overview' },
     '/heatmap': { label: 'Heatmap', sub: 'Thermal occupancy analysis' },
     '/rooms': { label: 'Rooms', sub: 'Live room monitoring' },

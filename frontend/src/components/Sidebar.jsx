@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -12,7 +12,7 @@ const sections = [
     {
         title: 'Overview',
         links: [
-            { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+            { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { to: '/campus', label: 'Campus', icon: Map },
             { to: '/heatmap', label: 'Heatmap', icon: Eye },
         ],
@@ -77,7 +77,8 @@ export default function Sidebar() {
             }}
         >
             {/* ── Logo area ──────────────────────────────── */}
-            <div
+            <Link
+                to="/"
                 style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -85,6 +86,7 @@ export default function Sidebar() {
                     padding: sidebarOpen ? '1.1rem 1rem' : '1.1rem 0.75rem',
                     borderBottom: '1px solid var(--border)',
                     minHeight: '60px',
+                    textDecoration: 'none',
                 }}
             >
                 <Logo size={32} />
@@ -98,7 +100,7 @@ export default function Sidebar() {
                         </p>
                     </div>
                 )}
-            </div>
+            </Link>
 
             {/* ── Navigation ─────────────────────────────── */}
             <nav style={{ flex: 1, padding: '0.75rem 0.5rem', overflowY: 'auto', overflowX: 'hidden' }}>
@@ -117,7 +119,7 @@ export default function Sidebar() {
                                 <NavLink
                                     key={to}
                                     to={to}
-                                    end={to === '/'}
+                                    end={to === '/dashboard'}
                                     className={({ isActive }) =>
                                         `nav-link${isActive ? ' nav-link-active' : ''}`
                                     }

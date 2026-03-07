@@ -1,11 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import CCTVBackground from './components/CCTVBackground';
 
 // ── Pages ──
-import LandingPage from './pages/LandingPage';
+import HomeGateway from './pages/HomeGateway';
 import Dashboard from './pages/Dashboard';
 import CampusOverview from './pages/CampusOverview';
 import HeatmapView from './pages/HeatmapView';
@@ -31,7 +30,8 @@ function ProtectedLayout() {
         <Navbar />
         <main className="flex-1 overflow-y-auto p-5 relative z-10">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Navigate to="/dashboard" />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/campus" element={<CampusOverview />} />
             <Route path="/heatmap" element={<HeatmapView />} />
             <Route path="/rooms" element={<Rooms />} />
@@ -55,14 +55,10 @@ function ProtectedLayout() {
 }
 
 export default function App() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) return null;
-
   return (
     <Routes>
-      <Route path="/login" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/" />} />
-      <Route path="/*" element={isAuthenticated ? <ProtectedLayout /> : <Navigate to="/login" />} />
+      <Route path="/" element={<HomeGateway />} />
+      <Route path="/*" element={<ProtectedLayout />} />
     </Routes>
   );
 }

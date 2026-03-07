@@ -10,21 +10,21 @@ export default function DeviceToggle({ device, onToggle }) {
     return (
         <div
             className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${is_on
-                    ? 'bg-brand-500/5 border border-brand-500/20'
-                    : 'bg-surface-800/30 border border-surface-700/20'
+                ? 'bg-[var(--accent-dim)] border border-[var(--border)]'
+                : 'bg-[var(--surface-2)] border border-[var(--border)]'
                 }`}
             id={`device-toggle-${id}`}
         >
             <div className="flex items-center gap-3">
                 <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${is_on ? 'bg-brand-500/20 text-brand-400' : 'bg-surface-700/40 text-surface-500'
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${is_on ? 'bg-[var(--accent-dim)] text-[var(--accent)]' : 'bg-[var(--surface-3)] text-[var(--text-3)]'
                         }`}
                 >
                     <Power size={18} />
                 </div>
                 <div>
-                    <p className="text-sm font-medium text-surface-200">{name}</p>
-                    <p className="text-[10px] text-surface-500">
+                    <p className="text-sm font-medium text-[var(--text-1)]">{name}</p>
+                    <p className="text-[10px] text-[var(--text-3)]">
                         {type} · {power_watts}W
                     </p>
                 </div>
@@ -35,7 +35,7 @@ export default function DeviceToggle({ device, onToggle }) {
                 onClick={() => controllable && onToggle?.(id)}
                 disabled={!controllable}
                 className={`relative w-11 h-6 rounded-full transition-all duration-300 ${controllable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-                    } ${is_on ? 'bg-brand-500' : 'bg-surface-600'}`}
+                    } ${is_on ? 'bg-[var(--accent)]' : 'bg-[var(--surface-3)]'}`}
                 aria-label={`Toggle ${name}`}
             >
                 <span
