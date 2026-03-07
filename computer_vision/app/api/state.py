@@ -10,6 +10,11 @@ latest_state = {
     "brightness": 0,
     "room_id": "test-room",
     "timestamp": 0,
+    "iot_auto_command": "",
+    "iot_auto_sent": False,
+    "iot_auto_transport": "",
+    "iot_auto_reason": "",
+    "iot_auto_error": "",
 }
 
 latest_ghost_frame = {
@@ -22,4 +27,9 @@ latest_ghost_frame = {
     "brightness": 0,
     "latency_ms": 0,
     "timestamp": 0,
+    "iot_auto_command": "",
+    "iot_auto_sent": False,
+    "iot_auto_transport": "",
+    "iot_auto_reason": "",
+    "iot_auto_error": "",
 }

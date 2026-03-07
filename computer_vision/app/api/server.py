@@ -3,6 +3,8 @@ import base64
 import os
 import re
 import secrets
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -25,9 +27,13 @@ app.add_middleware(
 
 @app.on_event("startup")
 def seed_dummy_auth_user():
-    users_col, _ = _get_auth_collections()
-    if users_col is not None:
-        _ensure_demo_user(users_col)
+    try:
+        users_col, _ = _get_auth_collections()
+        if users_col is not None:
+            _ensure_demo_user(users_col)
+    except Exception:
+        # Startup must not fail if Mongo is temporarily unavailable.
+        pass
 
 _mongo_client: Optional[MongoClient] = None
 _esp_collection = None
@@ -136,6 +142,47 @@ def _clear_esp_ip() -> bool:
         return False
     col.delete_one({"key": "esp32_ip"})
     return True
+
+
+def _resolve_esp_ip(ip_override: str = "") -> str:
+    ip = (ip_override or "").strip()
+    if ip:
+        return ip
+    return _read_esp_ip()
+
+
+def _esp_http_get_json(path: str, ip_override: str = "", timeout: float = 2.5):
+    ip = _resolve_esp_ip(ip_override)
+    if not ip:
+        return None, "ESP32 IP not configured"
+    url = f"http://{ip}{path}"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as res:
+            body = res.read().decode("utf-8", errors="ignore")
+        try:
+            import json
+            return json.loads(body or "{}"), ""
+        except Exception:
+            return {"raw": body}, ""
+    except urllib.error.URLError as ex:
+        return None, str(ex)
+    except Exception as ex:
+        return None, str(ex)
+
+
+def _esp_http_get_text(path: str, ip_override: str = "", timeout: float = 2.5):
+    ip = _resolve_esp_ip(ip_override)
+    if not ip:
+        return None, "ESP32 IP not configured"
+    url = f"http://{ip}{path}"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as res:
+            body = res.read().decode("utf-8", errors="ignore")
+        return body, ""
+    except urllib.error.URLError as ex:
+        return None, str(ex)
+    except Exception as ex:
+        return None, str(ex)
 
 @app.get("/")
 def root():
@@ -246,3 +293,40 @@ def auth_login(payload: DummyLoginRequest):
         token=token,
         user=DummyUserProfile(email=email, role=role, display_name=display_name),
     )
+
+
+@app.get("/esp/status")
+def esp_status(ip: str = ""):
+    data, err = _esp_http_get_json("/status", ip_override=ip)
+    if data is None:
+        return Response(status_code=502, content=f"ESP unreachable: {err}")
+    return data
+
+
+@app.get("/esp/status1")
+def esp_status_compat(ip: str = ""):
+    # Compatibility with firmware variants that expose /status1.
+    data, err = _esp_http_get_json("/status1", ip_override=ip)
+    if data is None:
+        return Response(status_code=502, content=f"ESP unreachable: {err}")
+    return data
+
+
+@app.get("/esp/led/{action}")
+def esp_led_action(action: str, ip: str = ""):
+    if action not in {"on", "off", "toggle"}:
+        return Response(status_code=400, content="Invalid LED action")
+    text, err = _esp_http_get_text(f"/led/{action}", ip_override=ip)
+    if text is None:
+        return Response(status_code=502, content=f"ESP unreachable: {err}")
+    return {"ok": True, "message": text}
+
+
+@app.get("/esp/fan/{action}")
+def esp_fan_action(action: str, ip: str = ""):
+    if action not in {"on", "off", "toggle"}:
+        return Response(status_code=400, content="Invalid fan action")
+    text, err = _esp_http_get_text(f"/fan/{action}", ip_override=ip)
+    if text is None:
+        return Response(status_code=502, content=f"ESP unreachable: {err}")
+    return {"ok": True, "message": text}

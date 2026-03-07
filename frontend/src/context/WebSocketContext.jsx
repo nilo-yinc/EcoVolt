@@ -2,8 +2,10 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback } f
 import { useApp } from './AppContext';
 
 const WebSocketContext = createContext(null);
+const WS_ENABLED = (import.meta.env.VITE_ENABLE_WS || 'false') === 'true';
 
 function resolveWsUrl() {
+    if (!WS_ENABLED) return '';
     const configured = (import.meta.env.VITE_WS_URL || '').trim();
     const nodeDefault = 'wss://ecovolt-node.onrender.com/ws';
 
@@ -35,6 +37,10 @@ export function WebSocketProvider({ children }) {
     // ── Attempt real WebSocket connection ─────────────────────────
     const connect = useCallback(() => {
         const wsUrl = resolveWsUrl();
+        if (!wsUrl) {
+            setConnected(false);
+            return;
+        }
 
         try {
             const ws = new WebSocket(wsUrl);

@@ -2,9 +2,11 @@ import base64
 import os
 import threading
 import time
+from pathlib import Path
 
 import cv2
 import uvicorn
+from dotenv import load_dotenv
 
 from app.api.state import latest_ghost_frame, latest_state
 from app.cv.appliance import EnvironmentDetector
@@ -14,6 +16,14 @@ from app.cv.privacy import draw_boundaries_and_anonymize
 from app.logic.engine import WasteDetector
 from app.logic.predictor import SavingsPredictor
 from app.mqtt.client import IoTCommunicator
+
+
+def _load_local_env():
+    root = Path(__file__).resolve().parents[1]
+    candidates = [root / ".env", root / "app" / "api" / ".env"]
+    for env_path in candidates:
+        if env_path.exists():
+            load_dotenv(env_path, override=False)
 
 
 def _encode_jpeg_b64(frame):
@@ -44,8 +54,9 @@ def run_vision_loop(show_window=False):
             frame = cv2.flip(frame, 1)
             person_count, fan_count, light_count, detections = detect_objects(frame)
             appliance_active, env_details = env_detector.detect(frame)
+            esp_appliance_on = iot.get_appliance_active_hint()
 
-            raw_appliance_seen = appliance_active or (light_count > 0) or (fan_count > 0)
+            raw_appliance_seen = appliance_active or (light_count > 0) or (fan_count > 0) or esp_appliance_on
             if raw_appliance_seen:
                 appliance_memory_frames = 45
 
@@ -56,7 +67,7 @@ def run_vision_loop(show_window=False):
                 combined_appliance_active = False
 
             waste_detected = logic_engine.update(person_count, combined_appliance_active)
-            iot.control_appliances(room_id=room_id, waste_detected=waste_detected)
+            iot_action = iot.control_appliances(room_id=room_id, waste_detected=waste_detected) or {}
             financial_projections = savings_model.update_savings(waste_detected, fan_count, light_count)
 
             display_frame = draw_boundaries_and_anonymize(frame.copy(), detections)
@@ -84,10 +95,17 @@ def run_vision_loop(show_window=False):
                     "lights_on": env_details["lights_on"] or (light_count > 0),
                     "screens_on": env_details["screens_on"],
                     "waste_detected": waste_detected,
+                    "appliance_active_hint": bool(combined_appliance_active),
+                    "esp_appliance_on": bool(esp_appliance_on),
                     "brightness": env_details["brightness_level"],
                     "savings_metrics": financial_projections,
                     "room_id": room_id,
                     "timestamp": timestamp_ms,
+                    "iot_auto_command": iot_action.get("command", ""),
+                    "iot_auto_sent": bool(iot_action.get("sent", False)),
+                    "iot_auto_transport": iot_action.get("transport", ""),
+                    "iot_auto_reason": iot_action.get("reason", ""),
+                    "iot_auto_error": iot_action.get("error", ""),
                 }
             )
             latest_ghost_frame.update(
@@ -102,6 +120,11 @@ def run_vision_loop(show_window=False):
                     "latency_ms": latency_ms,
                     "timestamp": timestamp_ms,
                     "appliance_on": combined_appliance_active,
+                    "iot_auto_command": iot_action.get("command", ""),
+                    "iot_auto_sent": bool(iot_action.get("sent", False)),
+                    "iot_auto_transport": iot_action.get("transport", ""),
+                    "iot_auto_reason": iot_action.get("reason", ""),
+                    "iot_auto_error": iot_action.get("error", ""),
                 }
             )
 
@@ -116,6 +139,7 @@ def run_vision_loop(show_window=False):
 
 
 if __name__ == "__main__":
+    _load_local_env()
     show_window = os.getenv("CV_SHOW_WINDOW", "0") == "1"
     cv_thread = threading.Thread(target=run_vision_loop, kwargs={"show_window": show_window}, daemon=True)
     cv_thread.start()

@@ -220,6 +220,18 @@ export default function GhostView() {
     const isWaste = (ghostMeta.waste_detected ?? activeRoom?.waste_detected) || activeRoom?.status === 'waste';
     const statusText = isWaste ? 'WASTE' : 'CLEAR';
     const statusClass = isWaste ? 'text-red-400' : 'text-emerald-400';
+    const iotAutoCommand = ghostMeta.iot_auto_command || '';
+    const iotAutoSent = !!ghostMeta.iot_auto_sent;
+    const iotAutoTransport = ghostMeta.iot_auto_transport || '';
+
+    useEffect(() => {
+        if (!isTestRoom) return;
+        if (!iotAutoSent) return;
+        if (!iotAutoCommand || iotAutoCommand === 'SAFE') return;
+        esp32.refreshStatus();
+        const timer = setTimeout(() => esp32.refreshStatus(), 700);
+        return () => clearTimeout(timer);
+    }, [isTestRoom, iotAutoSent, iotAutoCommand, ghostMeta.timestamp]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Get devices for current room
     const roomDevices = useMemo(() => {
@@ -600,6 +612,10 @@ export default function GhostView() {
                                             {esp32.lastMessage}
                                         </div>
                                     )}
+                                    <div className="mt-2 text-[8px] font-mono text-[var(--ww-text-2)]">
+                                        Auto: {iotAutoCommand ? `${iotAutoCommand}${iotAutoSent ? ' sent' : ' pending'}` : 'idle'}
+                                        {iotAutoTransport ? ` · via ${iotAutoTransport.toUpperCase()}` : ''}
+                                    </div>
 
                                     <div className="mt-2 text-[8px] font-mono text-[var(--ww-text-muted)]">
                                         ESP32 IP: {esp32.espIp}

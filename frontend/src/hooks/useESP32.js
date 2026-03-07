@@ -22,6 +22,28 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_M
   }
 }
 
+function toBool(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    return v === '1' || v === 'true' || v === 'on' || v === 'active';
+  }
+  return false;
+}
+
+function parseLedState(data) {
+  return toBool(
+    data?.ledState ?? data?.led ?? data?.lightState ?? data?.lights ?? data?.bulb ?? data?.relay1
+  );
+}
+
+function parseFanState(data) {
+  return toBool(
+    data?.fanState ?? data?.fan ?? data?.fan_status ?? data?.relay2
+  );
+}
+
 /**
  * Hook to communicate with the ESP32 IoT controller.
  * Polls /status every 5 s and exposes control functions for LED & Fan.
@@ -70,11 +92,19 @@ export function useESP32(enabled = true) {
     if (pollBusyRef.current) return;
     pollBusyRef.current = true;
     try {
-      const res = await fetchWithTimeout(`${baseUrl}/status`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setLedState(data.ledState);
-      setFanState(data.fanState);
+      let data = null;
+      // Prefer backend proxy to avoid browser-to-LAN restrictions.
+      const proxyRes = await fetchWithTimeout(`${cvApiBase}/esp/status?ip=${encodeURIComponent(espIp)}`);
+      if (proxyRes.ok) {
+        data = await proxyRes.json();
+      } else {
+        // Fallback to direct browser call.
+        const res = await fetchWithTimeout(`${baseUrl}/status`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+      }
+      setLedState(parseLedState(data));
+      setFanState(parseFanState(data));
       failCountRef.current = 0;
       setConnectionStatus('connected');
     } catch {
@@ -85,7 +115,7 @@ export function useESP32(enabled = true) {
     } finally {
       pollBusyRef.current = false;
     }
-  }, [enabled, baseUrl]);
+  }, [enabled, baseUrl, cvApiBase, espIp]);
 
   // Control LED
   const controlLED = useCallback(async (action) => {
@@ -96,9 +126,16 @@ export function useESP32(enabled = true) {
     setIsLoading(true);
     setLastMessage('');
     try {
-      const res = await fetchWithTimeout(`${baseUrl}/led/${action}`, {}, 2000);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
+      let text = '';
+      const proxyRes = await fetchWithTimeout(`${cvApiBase}/esp/led/${action}?ip=${encodeURIComponent(espIp)}`, {}, 2500);
+      if (proxyRes.ok) {
+        const data = await proxyRes.json();
+        text = data?.message || `LED ${action}`;
+      } else {
+        const res = await fetchWithTimeout(`${baseUrl}/led/${action}`, {}, 2000);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        text = await res.text();
+      }
       setLastMessage(text);
       if (action === 'on') setLedState(true);
       else if (action === 'off') setLedState(false);
@@ -109,7 +146,7 @@ export function useESP32(enabled = true) {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchStatus, baseUrl]);
+  }, [fetchStatus, baseUrl, cvApiBase, espIp]);
 
   // Control Fan
   const controlFan = useCallback(async (action) => {
@@ -120,9 +157,16 @@ export function useESP32(enabled = true) {
     setIsLoading(true);
     setLastMessage('');
     try {
-      const res = await fetchWithTimeout(`${baseUrl}/fan/${action}`, {}, 2000);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
+      let text = '';
+      const proxyRes = await fetchWithTimeout(`${cvApiBase}/esp/fan/${action}?ip=${encodeURIComponent(espIp)}`, {}, 2500);
+      if (proxyRes.ok) {
+        const data = await proxyRes.json();
+        text = data?.message || `Fan ${action}`;
+      } else {
+        const res = await fetchWithTimeout(`${baseUrl}/fan/${action}`, {}, 2000);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        text = await res.text();
+      }
       setLastMessage(text);
       if (action === 'on') setFanState(true);
       else if (action === 'off') setFanState(false);
@@ -133,7 +177,7 @@ export function useESP32(enabled = true) {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchStatus, baseUrl]);
+  }, [fetchStatus, baseUrl, cvApiBase, espIp]);
 
   // Polling
   useEffect(() => {
