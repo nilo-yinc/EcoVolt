@@ -35,3 +35,8 @@ class DummyLoginResponse(BaseModel):
     ok: bool = True
     token: str
     user: DummyUserProfile
+
+
+class GhostAnalyzeRequest(BaseModel):
+    image_b64: str = Field(min_length=10)
+    room_id: str = Field(default="test-room", min_length=1, max_length=100)

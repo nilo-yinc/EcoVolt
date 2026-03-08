@@ -5,5 +5,3 @@ numpy
 paho-mqtt
 pydantic
 ultralytics
-python-dotenv
-pymongo

@@ -10,6 +10,13 @@ function resolveCvApiUrl() {
     return configured || 'http://127.0.0.1:8000';
 }
 
+function isUsableGhostFrame(frame) {
+    if (!frame?.image_b64) return false;
+    const brightness = Number(frame?.brightness ?? 0);
+    const people = Number(frame?.person_count ?? 0);
+    return brightness > 8 || people > 0;
+}
+
 export default function GhostView() {
     const { rooms: liveRooms } = useRooms();
     const { devices, ghostFrames, backendOnline } = useApp();
@@ -24,6 +31,7 @@ export default function GhostView() {
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const cameraRequestRef = useRef(false);
+    const captureCanvasRef = useRef(null);
 
     // ESP32 IoT — only enabled when test-room is selected
     const isTestRoom = selectedRoom === 'test-room';
@@ -72,7 +80,7 @@ export default function GhostView() {
                 const res = await fetch(`${cvBase}/ghost/frame?t=${Date.now()}`, { cache: 'no-store' });
                 if (!res.ok) return;
                 const frame = await res.json();
-                if (!mounted || !frame?.image_b64) return;
+                if (!mounted || !isUsableGhostFrame(frame)) return;
                 setDirectCvFrame({ ...frame, received_at: Date.now() });
                 setDirectCvReady(true);
             } catch {
@@ -87,6 +95,52 @@ export default function GhostView() {
             clearInterval(timer);
         };
     }, []);
+
+    useEffect(() => {
+        if (dataOnlyMode || !localCameraReady || !videoRef.current) return undefined;
+
+        let stopped = false;
+        const cvBase = resolveCvApiUrl().replace(/\/+$/, '');
+
+        const pushFrame = async () => {
+            if (stopped || !videoRef.current || videoRef.current.readyState < 2) return;
+
+            const video = videoRef.current;
+            const canvas = captureCanvasRef.current || document.createElement('canvas');
+            captureCanvasRef.current = canvas;
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+
+            const ctx = canvas.getContext('2d', { willReadFrequently: false });
+            if (!ctx) return;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+            const imageB64 = dataUrl.split(',')[1];
+            if (!imageB64) return;
+
+            try {
+                const res = await fetch(`${cvBase}/ghost/analyze-frame`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_b64: imageB64, room_id: selectedRoom || 'test-room' }),
+                });
+                if (!res.ok) return;
+                const frame = await res.json();
+                if (stopped || !frame?.image_b64) return;
+                setDirectCvFrame({ ...frame, received_at: Date.now() });
+                setDirectCvReady(true);
+            } catch {
+                // Keep previous good frame.
+            }
+        };
+
+        pushFrame();
+        const timer = setInterval(pushFrame, 900);
+        return () => {
+            stopped = true;
+            clearInterval(timer);
+        };
+    }, [dataOnlyMode, localCameraReady, selectedRoom]);
 
     useEffect(() => {
         let mounted = true;
@@ -202,8 +256,9 @@ export default function GhostView() {
             !latest || (frame?.timestamp || 0) > (latest?.timestamp || 0) ? frame : latest
         ), null);
     }, [ghostFrames]);
-    const activeGhostFrame = (activeRoom ? ghostFrames[activeRoom.id] : null)
-        || ((directCvFrame && (!activeRoom || directCvFrame.room_id === activeRoom.id)) ? directCvFrame : null)
+    const roomGhostFrame = activeRoom ? ghostFrames[activeRoom.id] : null;
+    const activeGhostFrame = ((directCvFrame && (!activeRoom || directCvFrame.room_id === activeRoom.id)) ? directCvFrame : null)
+        || (isUsableGhostFrame(roomGhostFrame) ? roomGhostFrame : null)
         || latestGhostFrame
         || directCvFrame;
     const ghostMeta = activeGhostFrame || {};
@@ -214,9 +269,9 @@ export default function GhostView() {
     const frameSeenAt = activeGhostFrame?.received_at || activeGhostFrame?.timestamp || 0;
     const ghostFresh = !!frameSeenAt && (Date.now() - frameSeenAt < 3500);
     const peopleDetected = ghostMeta.person_count ?? activeRoom?.person_count ?? activeRoom?.occupancy ?? 0;
-    // Privacy-first: always show anonymized stream, never raw local live mode.
-    const usingYoloStream = (!!activeGhostSrc && ghostFresh) || directCvReady;
-    const usingLocalGhostStream = !usingYoloStream && localCameraReady;
+    const demoGhostSrc = '/demo-ghost-feed.jpg';
+    const usingYoloStream = !!activeGhostSrc && ghostFresh && isUsableGhostFrame(activeGhostFrame);
+    const usingDemoGhostStream = !usingYoloStream;
     const isWaste = (ghostMeta.waste_detected ?? activeRoom?.waste_detected) || activeRoom?.status === 'waste';
     const statusText = isWaste ? 'WASTE' : 'CLEAR';
     const statusClass = isWaste ? 'text-red-400' : 'text-emerald-400';
@@ -406,16 +461,12 @@ export default function GhostView() {
                                                 alt="Ghost feed"
                                                 className="w-full h-[500px] object-contain bg-black"
                                             />
-                                        ) : usingLocalGhostStream ? (
-                                            <div className="relative w-full h-[500px] bg-black overflow-hidden">
-                                                <video
-                                                    ref={videoRef}
-                                                    autoPlay
-                                                    muted
-                                                    playsInline
-                                                    className="w-full h-[500px] object-contain bg-black [filter:blur(10px)_saturate(0.9)]"
-                                                />
-                                            </div>
+                                        ) : usingDemoGhostStream ? (
+                                            <img
+                                                src={demoGhostSrc}
+                                                alt="Ghost test feed"
+                                                className="w-full h-[500px] object-contain bg-black"
+                                            />
                                         ) : (
                                             <div className="w-full h-[500px] flex items-center justify-center text-center bg-black/80 px-6">
                                                 <div>
@@ -444,14 +495,12 @@ export default function GhostView() {
                                         )}
                                         <div className="absolute top-4 left-4">
                                             <div className="text-[9px] font-mono text-purple-400 tracking-wider">
-                                                {usingYoloStream ? 'GHOST MODE' : 'LOCAL GHOST MODE'}
+                                                {usingYoloStream ? 'GHOST MODE' : 'TEST FEED'}
                                             </div>
                                             <div className="text-xs font-mono text-[var(--ww-text-1)] mt-1">
                                                 {usingYoloStream
                                                     ? `${peopleDetected} detected`
-                                                    : usingLocalGhostStream
-                                                        ? 'Live local camera (privacy blur)'
-                                                        : 'N/A (camera/CV required)'}
+                                                    : 'Demo ghost feed'}
                                             </div>
                                         </div>
                                         <div className="absolute bottom-4 left-4 right-4">
@@ -463,9 +512,7 @@ export default function GhostView() {
                                                         ? 'Backend offline: using local ghost camera'
                                                         : usingYoloStream
                                                             ? 'YOLO blur stream active'
-                                                            : usingLocalGhostStream
-                                                                ? 'Local ghost camera active (fallback)'
-                                                                : 'Camera/CV unavailable: privacy lock active')}
+                                                            : 'Test feed active')}
                                                 </span>
                                             </div>
                                         </div>

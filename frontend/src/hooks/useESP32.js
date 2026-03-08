@@ -92,17 +92,9 @@ export function useESP32(enabled = true) {
     if (pollBusyRef.current) return;
     pollBusyRef.current = true;
     try {
-      let data = null;
-      // Prefer backend proxy to avoid browser-to-LAN restrictions.
       const proxyRes = await fetchWithTimeout(`${cvApiBase}/esp/status?ip=${encodeURIComponent(espIp)}`);
-      if (proxyRes.ok) {
-        data = await proxyRes.json();
-      } else {
-        // Fallback to direct browser call.
-        const res = await fetchWithTimeout(`${baseUrl}/status`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        data = await res.json();
-      }
+      if (!proxyRes.ok) throw new Error(`HTTP ${proxyRes.status}`);
+      const data = await proxyRes.json();
       setLedState(parseLedState(data));
       setFanState(parseFanState(data));
       failCountRef.current = 0;
@@ -126,16 +118,10 @@ export function useESP32(enabled = true) {
     setIsLoading(true);
     setLastMessage('');
     try {
-      let text = '';
       const proxyRes = await fetchWithTimeout(`${cvApiBase}/esp/led/${action}?ip=${encodeURIComponent(espIp)}`, {}, 2500);
-      if (proxyRes.ok) {
-        const data = await proxyRes.json();
-        text = data?.message || `LED ${action}`;
-      } else {
-        const res = await fetchWithTimeout(`${baseUrl}/led/${action}`, {}, 2000);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        text = await res.text();
-      }
+      if (!proxyRes.ok) throw new Error(`HTTP ${proxyRes.status}`);
+      const data = await proxyRes.json();
+      const text = data?.message || `LED ${action}`;
       setLastMessage(text);
       if (action === 'on') setLedState(true);
       else if (action === 'off') setLedState(false);
@@ -157,16 +143,10 @@ export function useESP32(enabled = true) {
     setIsLoading(true);
     setLastMessage('');
     try {
-      let text = '';
       const proxyRes = await fetchWithTimeout(`${cvApiBase}/esp/fan/${action}?ip=${encodeURIComponent(espIp)}`, {}, 2500);
-      if (proxyRes.ok) {
-        const data = await proxyRes.json();
-        text = data?.message || `Fan ${action}`;
-      } else {
-        const res = await fetchWithTimeout(`${baseUrl}/fan/${action}`, {}, 2000);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        text = await res.text();
-      }
+      if (!proxyRes.ok) throw new Error(`HTTP ${proxyRes.status}`);
+      const data = await proxyRes.json();
+      const text = data?.message || `Fan ${action}`;
       setLastMessage(text);
       if (action === 'on') setFanState(true);
       else if (action === 'off') setFanState(false);

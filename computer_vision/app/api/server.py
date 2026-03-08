@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 
-from app.api.schemas import DummyLoginRequest, DummyLoginResponse, DummyUserProfile, Esp32IpConfig
+from app.api.schemas import DummyLoginRequest, DummyLoginResponse, DummyUserProfile, Esp32IpConfig, GhostAnalyzeRequest
 from app.api.state import latest_ghost_frame, latest_state
 
 app = FastAPI(title="Watt-Watch Brain API", version="1.0")
@@ -212,6 +212,25 @@ def get_ghost_status():
 @app.get("/ghost/frame")
 def get_ghost_frame():
     return latest_ghost_frame
+
+
+@app.post("/ghost/analyze-frame")
+def analyze_ghost_frame(payload: GhostAnalyzeRequest):
+    try:
+        import cv2
+        import numpy as np
+        from app.main import process_frame
+
+        image_bytes = base64.b64decode(payload.image_b64)
+        arr = np.frombuffer(image_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if frame is None:
+            return Response(status_code=400, content="Invalid image payload")
+
+        process_frame(frame, room_id=payload.room_id)
+        return latest_ghost_frame
+    except Exception as ex:
+        return Response(status_code=500, content=f"Frame analysis failed: {ex}")
 
 
 @app.get("/ghost/latest.jpg")
